@@ -1,0 +1,4 @@
+#Run via HKN
+#python train.py --task nc --dataset film --model HKPNet --dim 16 --lr 0.005 --num_layers 2 --act relu --bias 1 --dropout 0.05 --weight_decay 1e-4 --manifold Lorentz --log_freq 5 --patience 50 --linear_before 16 --cuda 0 --kernel_size 8 --epochs 500 --use_geoopt True --min_epochs 100
+#Run via BKN
+#python train.py --task nc --dataset film --model BKNet --dim 16 --lr 0.0005 --num_layers 2 --act relu --bias 1 --dropout 0.3 --weight_decay 1e-4 --manifold PoincareBall --log_freq 5 --patience 200 --linear_before 64 --cuda 0 --kernel_size 8 --use_geoopt False --c 1.0 --act relu --epochs 600 --min_epochs 200 --seed 7

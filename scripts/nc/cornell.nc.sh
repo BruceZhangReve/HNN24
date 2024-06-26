@@ -1,0 +1,5 @@
+#Run via HKN
+#python train.py --task nc --dataset cornell --model HKPNet --dim 16 --lr 1e-3 --num_layers 2 --act relu --bias 1 --dropout 0.5 --weight_decay 1e-3 --manifold Lorentz --log_freq 5 --patience 50 --linear_before 32 --cuda 0 --kernel_size 6 --epochs 500 --use_geoopt True --seed 8 --KP_extent 0.8 --optimizer radam --margin 2.0
+#Run via BKN
+python train.py --task nc --dataset cornell --model BKNet --dim 16 --lr 1e-3 --num_layers 2 --act relu --bias 1 --dropout 0.5 --weight_decay 1e-3 --manifold PoincareBall --log_freq 5 --patience 250 --linear_before 32 --cuda 0 --kernel_size 6 --use_geoopt False --c 1.0 --act relu --epochs 500 --min_epochs 200 --seed 8 --optimizer radam --log_freq 1 --KP_extent 0.66 --margin 2.0
+                                                                                                                                                                                                                       
