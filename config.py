@@ -4,7 +4,6 @@ from utils.train_utils import add_flags_from_config
 
 config_args = {
     'training_config': {
-        'use_geoopt': (False, "which manifold class to use, if false then use basd.manifold"),
         'lr': (0.01, 'learning rate'),
         'dropout': (0.1, 'dropout probability'),
         'cuda': (1, 'which cuda device to use (-1 for cpu training)'),
@@ -26,6 +25,9 @@ config_args = {
         'min_epochs': (100, 'do not early stop before min-epochs')
     },
     'model_config': {
+        'use_geoopt': (False, "which manifold class to use, if false then use basd.manifold"),
+        'AggKlein':(False, "if false, then use hyperboloid centorid for aggregation"),
+        'corr': (0,'0: d(x_i ominus x, x_k), 1: d(x_ik,x_k)'),
         'task': ('nc', 'which tasks to train on, can be any of [lp, nc]'),
         'model': ('BKNet', 'which encoder to use, can be any of [Shallow, MLP, HNN, GCN, GAT, HyperGCN, HyboNet,BKN]'),
         'dim': (128, 'embedding dimension'),

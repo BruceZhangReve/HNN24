@@ -96,6 +96,7 @@ class NCModel(BaseModel):
             #correct = output.gather(1, data['labels'][idx].to(torch.long).unsqueeze(-1))
             #loss = F.relu(self.margin - correct + output).mean()
             loss = F.cross_entropy(output, data['labels'][idx].to(torch.long), self.weights.to(output.dtype))
+            #I think CE loss works better than Margin Loss
         else:
             loss = F.cross_entropy(output, data['labels'][idx], self.weights)
             #loss = F.cross_entropy(output, data['labels'][idx].to(torch.long), self.weights.to(torch.float64))
@@ -201,9 +202,6 @@ class GCModel(BaseModel):
 
     def has_improved(self, m1, m2):
         return m1["f1"] < m2["f1"]
-
-
-
 
 
         

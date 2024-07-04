@@ -63,6 +63,53 @@ class GCDataset(Dataset):
                     
 
 def get_nei(adj):
+    """
+    This function processes a sparse adjacency matrix to generate a tensor of neighbor indices
+    and a corresponding mask tensor.
+
+    Parameters:
+    adj (scipy.sparse matrix): A sparse adjacency matrix representing the graph.
+
+    Returns:
+    nei (torch.Tensor): A tensor of shape (n, num_nei) where each row contains the indices of
+                        the neighbors of the corresponding node, padded with 0s to the maximum 
+                        number of neighbors.
+    nei_mask (torch.Tensor): A mask tensor of the same shape as nei, where a value of 1 indicates
+                             a valid neighbor index and 0 indicates padding.
+
+    Example:
+    Given an adjacency matrix adj:
+    [[0, 1, 0, 0],
+     [1, 0, 1, 0],
+     [0, 1, 0, 1],
+     [0, 0, 1, 0]]
+
+    The graph is:
+    Node 0 is connected to Node 1
+    Node 1 is connected to Node 0 and Node 2
+    Node 2 is connected to Node 1 and Node 3
+    Node 3 is connected to Node 2
+
+    n = 4  # Number of nodes
+    num_nei = 2  # Maximum number of neighbors (Node 1 and Node 2 have the most neighbors, 2)
+
+    adj_list = [[1], [0, 2], [1, 3], [2]]
+
+    The function generates:
+    nei = [
+        [1, 0],    # Neighbors of Node 0 (padded with 0)
+        [0, 2],    # Neighbors of Node 1
+        [1, 3],    # Neighbors of Node 2
+        [2, 0]     # Neighbors of Node 3 (padded with 0)
+    ]
+
+    nei_mask = [
+        [1, 0],    # Mask for Node 0 (1 for valid neighbor, 0 for padding)
+        [1, 1],    # Mask for Node 1
+        [1, 1],    # Mask for Node 2
+        [1, 0]     # Mask for Node 3 (1 for valid neighbor, 0 for padding)
+    ]
+    """
     n, _ = adj.shape
     num_nei = adj.sum(1).max() # max number of neighbors
     adj_list = adj.tolil().rows # adj list

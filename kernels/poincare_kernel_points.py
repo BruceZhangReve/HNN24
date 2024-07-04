@@ -110,7 +110,7 @@ def load_kernels(manifold, radius, num_kpoints, dimension, c, random=False):
 
     # Check if already done
     if not exists(kernel_file):
-        kernel_points = get_origin_kernel_points_poincare(num_kpoints, dimension, manifold, c, max_iter=6000, verbose=False)
+        kernel_points = get_origin_kernel_points_poincare(num_kpoints, dimension, manifold, c, max_iter=5000, verbose=False)
         kernel_tangents = manifold.logmap0(kernel_points[1:], c)#I think kernel_points should be on the same device with c, cause this line didn't throw error
         kernel_tangents = torch.cat([torch.zeros(1, dimension, dtype=kernel_tangents.dtype, device=kernel_tangents.device), kernel_tangents])
         torch.save(kernel_tangents, kernel_file)

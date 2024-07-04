@@ -376,6 +376,8 @@ class BKNet(Encoder):
             args.linear_before = int(args.linear_before)
             self.linear_before = B_layers.BLinear(self.manifold, dims[0], args.linear_before, self.c,
                                                      args.dropout, acts[0], args.bias)
+            #self.linear_before = B_layers.BLinear(self.manifold, dims[0], args.linear_before, self.c,
+                                                  #args.dropout, None, min(args.bias,0),False) # Means non-trainable
             dims[0] = args.linear_before
         else:
             self.before = False
@@ -386,12 +388,12 @@ class BKNet(Encoder):
             #c_in, c_out = self.curvatures[i], self.curvatures[i + 1]
             in_dim, out_dim = dims[i], dims[i + 1]
             act = acts[i]
-            #print(act)
+            #print(args.AggKlein)
             hgc_layers.append(
                 #Need to ensure things works if act==None!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                     B_layers.KPGraphConvolution(
                             self.manifold, args.kernel_size, args.KP_extent, in_dim, out_dim, args.bias,
-                            args.dropout, self.curvatures[i], nonlin=act, deformable = args.deformable
+                            args.dropout, self.curvatures[i], act, args.deformable, args.AggKlein, args.corr
                     )
             )
         self.layers = nn.Sequential(*hgc_layers)
@@ -401,6 +403,7 @@ class BKNet(Encoder):
         self.kp = True
 
     def encode(self, x, adj):
+        #Note this adj is in fact (nei, nei_mask) in real code
         x=x.to(torch.float64)##This is an ugly fix here also didn't work as well
         x_tan = self.manifold.proj_tan0(x, self.c)
         x_hyp = self.manifold.expmap0(x_tan, c=self.c)

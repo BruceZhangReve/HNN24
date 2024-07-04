@@ -1,6 +1,6 @@
 """Poincare ball manifold."""
 import sys
-sys.path.append('/data/lige/HKConv')# Please change accordingly!
+sys.path.append('/data/lige/HKN')# Please change accordingly!
 
 import torch
 
@@ -23,31 +23,40 @@ class PoincareBall(Manifold):
         super(PoincareBall, self).__init__()
         self.name = 'PoincareBall'
         self.min_norm = 1e-15
+        self.max_artanh = 1 - 1e-5
+        self.max_tanh = 15
         self.eps = {torch.float32: 4e-3, torch.float64: 1e-5}
 
     def sqdist(self, p1, p2, c):
         sqrt_c = c ** 0.5
+        """
         dist_c = artanh(
             sqrt_c * self.mobius_add(-p1, p2, c, dim=-1).norm(dim=-1, p=2, keepdim=False)
         )
-        dist = dist_c * 2 / sqrt_c
+        """
+        mobius_sum = self.mobius_add(-p1, p2, c, dim=-1).norm(dim=-1, p=2, keepdim=False)
+        clipped_sum = torch.clamp(sqrt_c * mobius_sum, max=self.max_artanh)
+        dist_c = artanh(clipped_sum)
+        dist = dist_c * 2 / (sqrt_c.clamp_min(self.eps[p1.dtype]))
         return dist ** 2
 
     def _lambda_x(self, x, c):
         x_sqnorm = torch.sum(x.data.pow(2), dim=-1, keepdim=True)
-        return 2 / (1. - c * x_sqnorm).clamp_min(self.min_norm)
+        return 2 / ((1. - c * x_sqnorm).clamp_min(self.eps[x.dtype]))
 
     def egrad2rgrad(self, p, dp, c):
         lambda_p = self._lambda_x(p, c)
         dp /= lambda_p.pow(2)
         return dp
 
+    #This ensures hyperbolic vectors are not too close or even beyond the border, (HNN paper)
+    #This avoids many numerical errors
     def proj(self, x, c):
-        norm = torch.clamp_min(x.norm(dim=-1, keepdim=True, p=2), self.min_norm)
+        norm = torch.clamp_min(x.norm(dim=-1, keepdim=True, p=2), self.min_norm) #perturb from o
         maxnorm = (1 - self.eps[x.dtype]) / (c ** 0.5)
         cond = norm > maxnorm
         projected = x / norm * maxnorm
-        return torch.where(cond, projected, x)
+        return torch.where(cond, projected, x) #not too close to border
 
     def proj_tan(self, u, p, c):
         return u
@@ -59,30 +68,30 @@ class PoincareBall(Manifold):
         sqrt_c = c ** 0.5
         u_norm = u.norm(dim=-1, p=2, keepdim=True).clamp_min(self.min_norm)
         second_term = (
-                tanh(sqrt_c / 2 * self._lambda_x(p, c) * u_norm)
+                tanh((sqrt_c / 2 * self._lambda_x(p, c) * u_norm).clamp(-self.max_tanh, self.max_tanh))
                 * u
                 / (sqrt_c * u_norm)
         )
         gamma_1 = self.mobius_add(p, second_term, c)
-        return gamma_1
+        return self.proj(gamma_1, c)
 
     def logmap(self, p1, p2, c):
         sub = self.mobius_add(-p1, p2, c)
         sub_norm = sub.norm(dim=-1, p=2, keepdim=True).clamp_min(self.min_norm)
         lam = self._lambda_x(p1, c)
         sqrt_c = c ** 0.5
-        return 2 / sqrt_c / lam * artanh(sqrt_c * sub_norm) * sub / sub_norm
+        return 2 / sqrt_c / lam * artanh((sqrt_c * sub_norm).clamp(-self.max_artanh, self.max_artanh)) * sub / sub_norm
 
     def expmap0(self, u, c):
         sqrt_c = c ** 0.5
         u_norm = torch.clamp_min(u.norm(dim=-1, p=2, keepdim=True), self.min_norm)
-        gamma_1 = tanh(sqrt_c * u_norm) * u / (sqrt_c * u_norm)
-        return gamma_1
+        gamma_1 = tanh((sqrt_c * u_norm).clamp(-self.max_tanh, self.max_tanh)) * u / (sqrt_c * u_norm)
+        return self.proj(gamma_1, c)
 
     def logmap0(self, p, c):
         sqrt_c = c ** 0.5
         p_norm = p.norm(dim=-1, p=2, keepdim=True).clamp_min(self.min_norm)
-        scale = 1. / sqrt_c * artanh(sqrt_c * p_norm) / p_norm
+        scale = 1. / sqrt_c * artanh((sqrt_c * p_norm).clamp(-self.max_artanh, self.max_artanh)) / p_norm
         return scale * p
 
     def mobius_add(self, x, y, c, dim=-1):
@@ -91,14 +100,14 @@ class PoincareBall(Manifold):
         xy = (x * y).sum(dim=dim, keepdim=True)
         num = (1 + 2 * c * xy + c * y2) * x + (1 - c * x2) * y
         denom = 1 + 2 * c * xy + c ** 2 * x2 * y2
-        return num / denom.clamp_min(self.min_norm)
+        return num / (denom.clamp_min(self.eps[x.dtype]))
 
     def mobius_matvec(self, m, x, c):
         sqrt_c = c ** 0.5
         x_norm = x.norm(dim=-1, keepdim=True, p=2).clamp_min(self.min_norm)
         mx = x @ m.transpose(-1, -2)
         mx_norm = mx.norm(dim=-1, keepdim=True, p=2).clamp_min(self.min_norm)
-        res_c = tanh(mx_norm / x_norm * artanh(sqrt_c * x_norm)) * mx / (mx_norm * sqrt_c)
+        res_c = tanh((mx_norm / x_norm * artanh((sqrt_c * x_norm).clamp(-self.max_artanh, self.max_artanh))).clamp(-self.max_tanh, self.max_tanh)) * mx / (mx_norm * sqrt_c)
         cond = (mx == 0).prod(-1, keepdim=True, dtype=torch.uint8)
         res_0 = torch.zeros(1, dtype=res_c.dtype, device=res_c.device)
         res = torch.where(cond.bool(), res_c, res_0) #torch.where(cond, res_0, res_c)
@@ -141,12 +150,6 @@ class PoincareBall(Manifold):
         lambda_x = self._lambda_x(x, c)
         return 2 * u / lambda_x.clamp_min(self.min_norm)
 
-    def to_hyperboloid(self, x, c):
-        K = 1./ c
-        sqrtK = K ** 0.5
-        sqnorm = torch.norm(x, p=2, dim=1, keepdim=True) ** 2
-        return sqrtK * torch.cat([K + sqnorm, 2 * sqrtK * x], dim=1) / (K - sqnorm)
-
 #################################Additional functions implemented!#################################
     def HCDist(self, x, cls,c):
         """
@@ -168,7 +171,7 @@ class PoincareBall(Manifold):
         """
         x_expanded = x.unsqueeze(1)  # Shape: (n, 1, d')
         cls_expanded = cls.unsqueeze(0)  # Shape: (1, num_classes, d')
-        Euclidean_x = torch.sqrt(self.sqdist(x_expanded, cls_expanded,c=c))  # Shape: (n, num_classes)
+        Euclidean_x = torch.sqrt(self.sqdist(x_expanded, cls_expanded,c=c)).clamp_min(self.min_norm)  # Shape: (n, num_classes)
 
         return Euclidean_x
     
@@ -176,7 +179,7 @@ class PoincareBall(Manifold):
     def ptransp0back(self, x, u, c):
         lambda_x = self._lambda_x(x, c)
         
-        return (lambda_x/2)*u
+        return (lambda_x/2*u).clamp_min(self.min_norm)
 
     def origin(self, *size, c, dtype=None, device=None) -> "ManifoldParameter":
         if dtype is None:
@@ -209,8 +212,69 @@ class PoincareBall(Manifold):
 
     def klein_to_poincare(self, x, c):
         norm_x = torch.norm(x, dim=-1, keepdim=True)
-        factor = 1 / (1 + torch.sqrt(1 - norm_x**2))#Because point feature always lie in the last dimension
+        factor = 1 / (1 + torch.sqrt(torch.clamp(1 - norm_x**2, min=0)))#Because point feature always lie in the last dimension
         return factor * x
+
+    #Original function only assumes x=(n,d)->(n,d+1); We make some adaptations. Needs Checking!
+    def poincare_to_hyperboloid(self, x, c):
+        K = 1. / c
+        sqrtK = K ** 0.5
+        sqnorm = torch.norm(x, p=2, dim=-1, keepdim=True) ** 2
+        K_expand = K + sqnorm
+        sqrtK_expand = 2 * sqrtK * x
+        result = torch.cat([K_expand, sqrtK_expand], dim=-1) / (K - sqnorm).clamp_min(self.min_norm)
+        return result
+
+    #Original function only assumes x=(n,d)->(n,d+1); We make some adaptations. Needs Checking!
+    def hyperboloid_to_poincare(self, x, c):
+        K = 1. / c
+        sqrtK = K ** 0.5
+        d = x.size(-1) - 1
+        return sqrtK * x.narrow(-1, 1, d) / (x[..., 0:1] + sqrtK)
+
+    #I was thinking, when mapping to a different model, do we need hyperboloid_proj for constraining?
+    def hyperboloid_proj(self, x, c):
+        device = x.device
+        dtype = x.dtype
+    
+        K = 1. / c
+        K = torch.tensor(K.item(), device=device, dtype=dtype) 
+
+        d = x.size(-1) - 1
+        y = x.narrow(-1, 1, d)
+        y_sqnorm = torch.norm(y, p=2, dim=-1, keepdim=True) ** 2
+
+        mask = torch.ones_like(x, device=device, dtype=dtype)
+        mask[..., 0] = 0
+
+        vals = torch.zeros_like(x, device=device, dtype=dtype)
+        vals[..., 0] = torch.sqrt(torch.clamp(K + y_sqnorm, min=self.eps[dtype])).squeeze(-1)
+
+        return vals + mask * x
+    
+    def lorentzian_inner(self, u, v=None, *, keepdim=False):
+        if v is None:
+            v = u
+        # Temporal Component
+        time_inner = (-u[..., 0] * v[..., 0]).clamp_min(self.min_norm)
+        # Spatial Component
+        space_inner = torch.sum(u[..., 1:] * v[..., 1:], dim=-1, keepdim=keepdim).clamp_min(self.min_norm)
+        return time_inner + space_inner
+
+    def hyperboloid_centroid(self, x, c, w=None):
+        if w is not None:
+            ave = torch.einsum('bnkd,bnk->bnd', x, w)
+        else:
+            ave = x.mean(dim=-2)
+        
+        # Lorentzian norm
+        lorentzian_norm = self.lorentzian_inner(ave,ave,keepdim=False).unsqueeze(-1).abs().clamp_min(1e-8).sqrt()
+
+        # Centroid
+        sqrt_neg_kappa = torch.sqrt(c)
+        centroid = ave / (sqrt_neg_kappa * lorentzian_norm)
+
+        return centroid
 
     def klein_midpoint(self, x, w=None):
         """
