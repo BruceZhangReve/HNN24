@@ -1,0 +1,79 @@
+INFO:root:Using: cuda:4
+INFO:root:Using seed 10.
+INFO:root:Dataset: PTC
+INFO:root:Num classes: 2
+INFO:root:GCModel(
+  (manifold): Lorentz manifold
+  (encoder): HKPNet(
+    (manifold): Lorentz manifold
+    (linear_before): LorentzLinear(
+      (manifold): Lorentz manifold
+      (weight): Linear(in_features=20, out_features=64, bias=True)
+      (dropout): Dropout(p=0.2, inplace=False)
+    )
+    (layers): Sequential(
+      (0): KPGraphConvolution(
+        (net): KernelPointAggregation(
+          (manifold): Lorentz manifold
+          (linears): ModuleList(
+            (0): LorentzLinear(
+              (manifold): Lorentz manifold
+              (weight): Linear(in_features=64, out_features=64, bias=True)
+              (dropout): Dropout(p=0.2, inplace=False)
+            )
+            (1): LorentzLinear(
+              (manifold): Lorentz manifold
+              (weight): Linear(in_features=64, out_features=64, bias=True)
+              (dropout): Dropout(p=0.2, inplace=False)
+            )
+            (2): LorentzLinear(
+              (manifold): Lorentz manifold
+              (weight): Linear(in_features=64, out_features=64, bias=True)
+              (dropout): Dropout(p=0.2, inplace=False)
+            )
+            (3): LorentzLinear(
+              (manifold): Lorentz manifold
+              (weight): Linear(in_features=64, out_features=64, bias=True)
+              (dropout): Dropout(p=0.2, inplace=False)
+            )
+          )
+          (offset_conv): KernelPointAggregation(
+            (manifold): Lorentz manifold
+            (linears): ModuleList(
+              (0): LorentzLinear(
+                (manifold): Lorentz manifold
+                (weight): Linear(in_features=64, out_features=253, bias=True)
+                (dropout): Dropout(p=0.2, inplace=False)
+              )
+              (1): LorentzLinear(
+                (manifold): Lorentz manifold
+                (weight): Linear(in_features=64, out_features=253, bias=True)
+                (dropout): Dropout(p=0.2, inplace=False)
+              )
+              (2): LorentzLinear(
+                (manifold): Lorentz manifold
+                (weight): Linear(in_features=64, out_features=253, bias=True)
+                (dropout): Dropout(p=0.2, inplace=False)
+              )
+              (3): LorentzLinear(
+                (manifold): Lorentz manifold
+                (weight): Linear(in_features=64, out_features=253, bias=True)
+                (dropout): Dropout(p=0.2, inplace=False)
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+  (decoder): LorentzPoolDecoder(
+    (manifold): Lorentz manifold
+  )
+)
+INFO:root:Total number of parameters: 84418.0
+INFO:root:Epoch: 0002 lr: [1e-06, 1e-06] train_loss:  nan train_acc: 0.432886 train_f1: 0.000000 time: 1.4272s
+INFO:root:Epoch: 0002 val_loss:  nan val_acc: 0.500000 val_f1: 0.000000
+INFO:root:Epoch: 0004 lr: [1e-06, 1e-06] train_loss:  nan train_acc: 0.432886 train_f1: 0.000000 time: 1.4212s
+INFO:root:Epoch: 0004 val_loss:  nan val_acc: 0.500000 val_f1: 0.000000
+INFO:root:Epoch: 0006 lr: [1e-06, 1e-06] train_loss:  nan train_acc: 0.432886 train_f1: 0.000000 time: 1.4227s
+INFO:root:Epoch: 0006 val_loss:  nan val_acc: 0.500000 val_f1: 0.000000

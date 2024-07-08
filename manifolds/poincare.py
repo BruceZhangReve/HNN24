@@ -85,8 +85,9 @@ class PoincareBall(Manifold):
     def expmap0(self, u, c):
         sqrt_c = c ** 0.5
         u_norm = torch.clamp_min(u.norm(dim=-1, p=2, keepdim=True), self.min_norm)
-        gamma_1 = tanh((sqrt_c * u_norm).clamp(-self.max_tanh, self.max_tanh)) * u / (sqrt_c * u_norm)
-        return self.proj(gamma_1, c)
+        #gamma_1 = tanh((sqrt_c * u_norm).clamp(-self.max_tanh, self.max_tanh)) * u / (sqrt_c * u_norm)
+        #return self.proj(gamma_1, c)
+        return self.proj(tanh((sqrt_c * u_norm).clamp(-self.max_tanh, self.max_tanh)) * u / (sqrt_c * u_norm),c)
 
     def logmap0(self, p, c):
         sqrt_c = c ** 0.5
@@ -204,17 +205,6 @@ class PoincareBall(Manifold):
 
         return self.expmap0(tangents,c=c.to(device))                              
 
-    
-    def poincare_to_klein(self, x, c):
-        norm_x = torch.norm(x, dim=-1, keepdim=True)#Because point feature always lie in the last dimension
-        factor = 2 / (1 + norm_x**2)
-        return factor * x
-
-    def klein_to_poincare(self, x, c):
-        norm_x = torch.norm(x, dim=-1, keepdim=True)
-        factor = 1 / (1 + torch.sqrt(torch.clamp(1 - norm_x**2, min=0)))#Because point feature always lie in the last dimension
-        return factor * x
-
     #Original function only assumes x=(n,d)->(n,d+1); We make some adaptations. Needs Checking!
     def poincare_to_hyperboloid(self, x, c):
         K = 1. / c
@@ -268,7 +258,8 @@ class PoincareBall(Manifold):
             ave = x.mean(dim=-2)
         
         # Lorentzian norm
-        lorentzian_norm = self.lorentzian_inner(ave,ave,keepdim=False).unsqueeze(-1).abs().clamp_min(1e-8).sqrt()
+        #lorentzian_norm = self.lorentzian_inner(ave,ave,keepdim=False).unsqueeze(-1).abs().clamp_min(1e-8).sqrt()
+        lorentzian_norm = self.lorentzian_inner(ave,ave,keepdim=False).unsqueeze(-1).abs().clamp_min(self.min_norm).sqrt()
 
         # Centroid
         sqrt_neg_kappa = torch.sqrt(c)
@@ -276,15 +267,38 @@ class PoincareBall(Manifold):
 
         return centroid
 
+    def poincare_to_klein(self, x, c):
+        norm_x = torch.norm(x, dim=-1, keepdim=True)#Because point feature always lie in the last dimension
+        factor = 2 / (1 + norm_x**2)
+        return factor * x
+
+    def klein_to_poincare(self, x, c):
+        norm_x = torch.norm(x, dim=-1, keepdim=True)
+        factor = 1 / (1 + torch.sqrt(torch.clamp(1 - norm_x**2, min=0)))#Because point feature always lie in the last dimension
+        return factor * x
+
+    def klein_proj(self, x, c):
+        #It's actually the same as poincare proj, because they're eventually all unit balls
+        norm = torch.clamp_min(x.norm(dim=-1, keepdim=True, p=2), self.min_norm) #Perturb from o
+        maxnorm = (1 - self.eps[x.dtype]) / (c ** 0.5)
+        cond = norm > maxnorm
+        projected = x / norm * maxnorm
+        return torch.where(cond, projected, x) #Away form border
+
     def klein_midpoint(self, x, w=None):
         """
         Note:
+        In terms of node classification:
         During inner aggregation:
         x: (n,nei_num, K, d'), the Klein features
         w: (n,nei_num,K), the Poincare/Klein kernel_feature distance
-        During outer aggregation: TBC!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        During outer aggregation: 
         x: (n,nei_num,d'), the Klein features
-        w: (n,nei_num), the Poincare/Klein kernel_feature distance
+        w: None (n,nei_num), the Poincare/Klein kernel_feature distance
+
+        In terms of graph classification:
+        x: (n,d') one graph from the batch, containing all nodes
+        w: None (n)
         """
         def einsum_last_dim(x, y):
             """
@@ -316,15 +330,16 @@ class PoincareBall(Manifold):
 
             return torch.einsum('...j,...jk->...k', w, z)
 
-        klein_gamma_xi=1/(torch.sqrt(1.0-torch.norm(x,dim=-1)).abs().clamp_min(1e-8))
+        klein_gamma_xi=1/(torch.sqrt(1.0-torch.norm(x,dim=-1)).abs().clamp_min(self.min_norm))
 
         if w is None:
-            #Is it ok?
-            w=torch.ones([x.shape[0],x.shape[1]],dtype=torch.float64)
-            #This situation is mainly used for outer aggregation
+            #w=torch.ones([x.shape[0],x.shape[1]],dtype=x.dtype)
+            w =  torch.ones(list(klein_gamma_xi.shape),dtype = x.dtype,device = x.device)#Causing problem???
+
         w=w.to(x.device)#From the model perspective, this x will be on cuda if specified
+        #print(klein_gamma_xi.shape)
         lower = einsum_last_dim(klein_gamma_xi, w)
-        lower = torch.where(lower > 0, lower.clamp_min(1e-8), lower.clamp_max(-1e-8))
+        lower = torch.where(lower > 0, lower.clamp_min(self.min_norm), lower.clamp_max(-self.min_norm))
         #Note: Giveing lower an extreme value won't affect, because the numenator is 0
         upper = einsum_operation(klein_gamma_xi,w,x)
             

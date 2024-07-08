@@ -166,6 +166,7 @@ class GCModel(BaseModel):
 
     def __init__(self, args):
         super(GCModel, self).__init__(args)
+        self.manifold = getattr(manifolds, args.manifold)()
         self.decoder = gcdecoder[args.model](self.c, args)
         if args.n_classes > 2:
             self.f1_average = 'micro'
@@ -179,23 +180,65 @@ class GCModel(BaseModel):
             self.weights = self.weights.to(args.device)
 
     def decode(self, h, ed_idx):
-        output = self.decoder.decode(h, ed_idx)
-        # print(output)
-        return F.log_softmax(output.unsqueeze(0), dim = 1)
+        if self.manifold_name == 'Lorentz':
+            output = self.decoder.decode(h, ed_idx)
+            #print('partially decoded value shape:',output.shape) #
+            return F.log_softmax(output.unsqueeze(0), dim = 1)
+        elif self.manifold_name == 'PoincareBall':
+            #output = self.decoder.decode(h, ed_idx) #output:(min{batch_size,remaining samples},num_classes) like the one hot encoding
+            #print('partially decoded value shape:',output.shape) #
+            return  self.decoder.decode(h, ed_idx)
+        else:
+            raise NotImplementedError("manifold not supported")
 
     def compute_metrics(self, embeddings, labels, ed_idx, type = 1):
-        output = self.decode(embeddings, ed_idx).squeeze()
-        # print(output)
-        # print(torch.tensor(labels))
-        loss = F.nll_loss(output, labels, self.weights)
-        # acc, f1 = acc_f1(output, data['labels'][ind].unsqueeze(0), average=self.f1_average)
-        # metrics = {'loss': loss, 'output': output[0].detach().cpu().numpy(), 'label': data['labels'][ind]}
-        acc, f1 = acc_f1(output, labels, average=self.f1_average)
-        if type == 1:
-            metrics = {'loss': loss, 'acc': acc, 'f1': f1}
-        elif type == 2:
-            metrics = {'loss': loss, 'output': output.detach()}
-        return metrics
+        if self.manifold_name == 'Lorentz':
+            output = self.decode(embeddings, ed_idx).squeeze()
+            #print(output.shape)
+            #print(torch.tensor(labels))
+            loss = F.nll_loss(output, labels, self.weights)
+            acc, f1 = acc_f1(output, labels, average=self.f1_average)
+            if type == 1:
+                metrics = {'loss': loss, 'acc': acc, 'f1': f1}
+            elif type == 2:
+                metrics = {'loss': loss, 'output': output.detach()}
+            return metrics
+
+        elif self.manifold_name == 'PoincareBall':
+            #print('coming here')
+            output = self.decode(embeddings, ed_idx)
+            #print(output.shape,labels.shape) #(batch_size,num_class),(batch_size)
+            loss = F.cross_entropy(output, labels, self.weights)
+            acc, f1 = acc_f1(output, labels, average=self.f1_average)
+            if type == 1:
+                metrics = {'loss': loss, 'acc': acc, 'f1': f1}
+            elif type == 2:
+                metrics = {'loss': loss, 'output': output.detach()}
+            return metrics
+
+        #elif self.manifold_name == 'PoincareBall':
+            #print('Using ')
+            #output = self.decode(embeddings, ed_idx) #A big matrix contaning many nodes from different graphs
+
+            #x0 = []
+            #for i in range(len(ed_idx)):
+                #print(output[0 if i == 0 else ed_idx[i - 1]:ed_idx[i]])
+                #x0.append(torch.mean(output[0 if i == 0 else ed_idx[i - 1]:ed_idx[i]], dim = 0))
+
+            #output = torch.stack(x0)
+
+            #print(output.shape,labels.shape) #(sum_b in batch_size{b's nodes},num_class),(batch_size)
+            #loss = F.cross_entropy(output, labels, self.weights)
+            #acc, f1 = acc_f1(output, labels, average=self.f1_average)
+            #if type == 1:
+                #metrics = {'loss': loss, 'acc': acc, 'f1': f1}
+            #elif type == 2:
+                #metrics = {'loss': loss, 'output': output.detach()}
+            #return metrics
+
+        else:
+             raise NotImplementedError("manifold not supported")
+             return 0
 
     def init_metric_dict(self):
         return {'acc': -1, 'f1': -1}

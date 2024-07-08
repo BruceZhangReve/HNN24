@@ -248,7 +248,7 @@ class BLinear(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        # 使用 Xavier 初始化 E_linear 的权重
+        # Use Xavier to init E_linear's weights
         nn.init.xavier_uniform_(self.E_linear.weight, gain=nn.init.calculate_gain('relu'))
         if self.E_linear.bias is not None:
             nn.init.constant_(self.E_linear.bias, 0)
@@ -257,18 +257,19 @@ class BLinear(nn.Module):
         # Apply dropout to the input
         x = self.dropout(x)
 
-        x_tan = self.manifold.logmap0(x, self.c)
-        x_tan = self.manifold.proj_tan0(x_tan, self.c)
-        x_tan = self.E_linear(x_tan)
-        res = self.manifold.expmap0(x_tan, c=self.c)
-        
+        #Note that expmap0/exp contains proj already!
+        res = self.manifold.expmap0(
+                self.E_linear(self.manifold.proj_tan0(
+                                self.manifold.logmap0(x, self.c),
+                                self.c)),
+                self.c)
+
+        #Note that expmap0/exp contains proj already!
         if self.use_bias:
-            # Project the bias to the tangent space
             bias = self.manifold.proj_tan0(self.bias.view(1, -1), self.c)
-            hyp_bias = self.manifold.expmap0(bias, self.c)
-            # Add the bias
-            res = self.manifold.mobius_add(res, hyp_bias, self.c)
-            res = self.manifold.proj(res, self.c)
+            res = self.manifold.proj(self.manifold.mobius_add(res, #then mobius addition
+                                    self.manifold.expmap0(bias, self.c), self.c), # a bias on manifold
+                                    self.c)
         return res
 
     def extra_repr(self):
@@ -286,9 +287,11 @@ class BAct(Module):
         self.act = act
 
     def forward(self, x):
-        xt = self.act(self.manifold.logmap0(x, c=self.c))
-        xt = self.manifold.proj_tan0(xt, c=self.c)
-        return self.manifold.expmap0(xt, c=self.c)
+         #Note that expmap0/exp contains proj already!
+        return self.manifold.expmap0(
+                    self.manifold.proj_tan0(
+                        self.act(self.manifold.logmap0(x, c=self.c)), 
+                        c=self.c), c=self.c)
 
     def extra_repr(self):
         return 'c={}, act={}'.format(
@@ -554,7 +557,7 @@ class KernelPointAggregation(nn.Module):
             x_nei_kernel_dis = x_nei_kernel_dis * nei_mask  # (n, k, nei_num)
             x_nei_transform = self.apply_kernel_transform(x_nei) #(n,K,nei_num,d)
         else:
-            #Use d(xik, xk)
+            #print('corr == 1') #Use d(xik, xk)
             x_nei_transform = self.apply_kernel_transform(x_nei) #(n,K,nei_num,d)
             if x_nei.shape[-1] != x_nei_transform.shape[-1]:
                 raise ValueError("Don't change dimension in linear transformation step if use corr==1")
@@ -566,9 +569,13 @@ class KernelPointAggregation(nn.Module):
         if self.AggKlein == True:
             #print("Using Klein Midpoint for Aggregation")
             klein_x_nei_transform = self.manifold.poincare_to_klein(x_nei_transform,c=self.c)#(n,K,nei_num,d')
+            klein_x_nei_transform = self.manifold.klein_proj(klein_x_nei_transform, self.c)#Numerical reasons
             klein_x_nei_transform = self.avg_kernel(klein_x_nei_transform, x_nei_kernel_dis, self.AggKlein)#inner_agg#(n,nei_num,d') in Klein
+            #print(klein_x_nei_transform.shape)
             klein_x_final = self.manifold.klein_midpoint(klein_x_nei_transform)#outer_agg#(n,d')# in Klein
+            #klein_x_final = self.manifold.klein_proj(klein_x_final, self.c)#Add this sentence gives nan!
             x_final = self.manifold.klein_to_poincare(klein_x_final,c=self.c)#(n,d')# in Poincare
+            x_final = self.manifold.proj(x_final,c=self.c) #Numerical reasons
         else:
             #print("Using Hyperboloid Centroid for Aggregation")
             hyperboloid_x_nei_transform = self.manifold.poincare_to_hyperboloid(x_nei_transform,c=self.c)#(n,K,nei_num,d')

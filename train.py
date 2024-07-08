@@ -22,6 +22,8 @@ from utils.eval_utils import acc_f1
 
 from geoopt import ManifoldParameter as geoopt_ManifoldParameter
 from manifolds.base import ManifoldParameter as base_ManifoldParameter
+
+os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:128'
 torch.cuda.empty_cache()
 
 
@@ -141,7 +143,8 @@ def train(args):
 
     #Starting form here is node classicication, have not add BKNet yet
     if args.task == 'gc':
-        dataset = GCDataset((data['adj_train'], data['features'], data['labels']), KP=(args.model == 'HKPNet'), normlize=args.normalize_adj, device = args.device)
+        dataset = GCDataset((data['adj_train'], data['features'], data['labels']), KP=(args.model == 'HKPNet' or args.model == 'BKNet'),
+                             normlize=args.normalize_adj, device = args.device)
         for epoch in range(args.epochs):
             t = time.time()
             model.train()
@@ -155,11 +158,18 @@ def train(args):
                 if len(selected_idx) == 0:
                     continue
                 if args.model == 'HKPNet':
+                    #Note ed_idx seems to be the index of graphs
+                    nei, nei_mask, features, labels, ed_idx = dataset[selected_idx]
+                    embeddings = model.encode(features, (nei, nei_mask))
+                elif args.model == 'BKNet':
+                    #shape(nei/nei_mask)=(sum(n),max_nei_num), like concat all graph neibor together
+                    #It works if every node on every graph is represented by different numbers yeah
                     nei, nei_mask, features, labels, ed_idx = dataset[selected_idx]
                     embeddings = model.encode(features, (nei, nei_mask))
                 else:
                     adj, features, labels, ed_idx = dataset[selected_idx]
                     embeddings = model.encode(features, adj)
+                #print(embeddings.shape,labels.shape,ed_idx.shape,len(ed_idx))
                 train_metrics = model.compute_metrics(embeddings, labels, ed_idx, type = 2)
                 tot_metrics['loss'] += train_metrics['loss'].detach().cpu().numpy()
                 bats += 1
@@ -203,6 +213,9 @@ def train(args):
                     if args.model == 'HKPNet':
                         nei, nei_mask, features, labels, ed_idx = dataset[selected_idx]
                         embeddings = model.encode(features, (nei, nei_mask))
+                    elif args.model == 'BKNet':
+                        nei, nei_mask, features, labels, ed_idx = dataset[selected_idx]
+                        embeddings = model.encode(features, (nei, nei_mask))
                     else:
                         adj, features, labels, ed_idx = dataset[selected_idx]
                         embeddings = model.encode(features, adj)
@@ -233,6 +246,9 @@ def train(args):
                         if len(selected_idx) == 0:
                             continue
                         if args.model == 'HKPNet':
+                            nei, nei_mask, features, labels, ed_idx = dataset[selected_idx]
+                            embeddings = model.encode(features, (nei, nei_mask))
+                        elif args.model == 'BKNet':
                             nei, nei_mask, features, labels, ed_idx = dataset[selected_idx]
                             embeddings = model.encode(features, (nei, nei_mask))
                         else:
@@ -277,6 +293,9 @@ def train(args):
                 if len(selected_idx) == 0:
                     continue
                 if args.model == 'HKPNet':
+                    nei, nei_mask, features, labels, ed_idx = dataset[selected_idx]
+                    embeddings = model.encode(features, (nei, nei_mask))
+                elif args.model == 'BKNet':
                     nei, nei_mask, features, labels, ed_idx = dataset[selected_idx]
                     embeddings = model.encode(features, (nei, nei_mask))
                 else:
@@ -331,6 +350,9 @@ def train(args):
                 torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
             optimizer.step()
             lr_scheduler.step()
+
+            torch.cuda.empty_cache()# try this
+            
             if (epoch + 1) % args.log_freq == 0:
                 logging.info(" ".join([
                     'Epoch: {:04d}'.format(epoch + 1),

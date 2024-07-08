@@ -12,6 +12,8 @@ from layers.att_layers import GraphAttentionLayer
 from layers.layers import GraphConvolution, Linear
 from kernels.poincare_kernel_points import simple_PoincareWrappedNormal
 
+from layers.B_layers import BLinear
+
 from geoopt import ManifoldParameter as geoopt_ManifoldParameter
 from manifolds.base import ManifoldParameter as base_ManifoldParameter
 
@@ -79,26 +81,6 @@ class LinearDecoder(Decoder):
         return 'in_features={}, out_features={}, bias={}, c={}'.format(
                 self.input_dim, self.output_dim, self.bias, self.c
         )
-
-
-class LorentzDecoder(Decoder):
-    """
-    MLP Decoder for Hyperbolic/Euclidean node classification models.
-    """
-
-    def __init__(self, c, args):
-        super(LorentzDecoder, self).__init__(c)
-        self.manifold = getattr(manifolds, args.manifold)()
-        self.input_dim = args.dim
-        self.output_dim = args.n_classes
-        self.use_bias = args.bias
-        self.cls = geoopt_ManifoldParameter(self.manifold.random_normal((args.n_classes, args.dim), std=1./math.sqrt(args.dim)), manifold=self.manifold)
-        if args.bias:
-            self.bias = nn.Parameter(torch.zeros(args.n_classes))
-        self.decode_adj = False
-
-    def decode(self, x, adj):
-        return (2 + 2 * self.manifold.cinner(x, self.cls)) + self.bias
 
 class LorentzDecoder(Decoder):
     """
@@ -170,7 +152,84 @@ class PoincareDecoder(Decoder):
 
     def decode(self, x, adj):
         return (self.manifold.HCDist(x,self.cls,c=self.c)) + self.bias
-        #return self.manifold.norm()
+
+"""
+# PoincarePoolDecoder -v1
+class PoincarePoolDecoder(Decoder):
+    def __init__(self, c, args):
+        super(PoincarePoolDecoder, self).__init__(c)
+        self.manifold = getattr(manifolds, args.manifold)()
+        self.input_dim = args.dim
+        self.output_dim = args.n_classes
+        self.use_bias = args.bias
+        self.c = c
+        self.cls = base_ManifoldParameter(self.manifold.random_normal((args.n_classes, args.dim),c=self.c, std=1./math.sqrt(args.dim)),
+                                          requires_grad=True, manifold=self.manifold, c=self.c)
+        if args.bias:
+            self.bias = nn.Parameter(torch.zeros(args.n_classes))
+        self.decode_adj = False
+
+    def decode(self, x, ed_idx):
+        #Note x here is a bit different, although it is (n,d''), this n is the the concatenation of many graphs
+        x0 = []
+        for i in range(len(ed_idx)):
+            #print(x[0 if i == 0 else ed_idx[i - 1]:ed_idx[i]])
+            #It means if i==0, then use x[0:ed_idx[0]], if i==1 then use x[ed_idx[0]:ed_idx[1]] ......
+            
+            #Klein Aggregation
+            x0.append(self.manifold.proj(self.manifold.klein_to_poincare(self.manifold.klein_midpoint(
+                                                                        self.manifold.klein_proj(self.manifold.poincare_to_klein(
+                                                                        x[0 if i == 0 else ed_idx[i - 1]:ed_idx[i]],self.c),self.c)),
+                                                                        self.c),
+                                                                        self.c))
+        x0 = torch.stack(x0)
+        #print('x0.shape:',x0.shape), (batch_size, d'')
+
+        return (self.manifold.HCDist(x0, self.cls, self.c)) + self.bias #(batch_size,num_classes)
+"""
+
+# PoincarePoolDecoder -v2
+class PoincarePoolDecoder(Decoder):
+    def __init__(self, c, args):
+        super(PoincarePoolDecoder, self).__init__(c)
+        self.manifold = getattr(manifolds, args.manifold)()
+        self.input_dim = args.dim
+        self.output_dim = args.n_classes
+        self.use_bias = args.bias
+        self.c = c
+        self.cls = base_ManifoldParameter(self.manifold.random_normal((args.n_classes, args.dim),c=self.c, std=1./math.sqrt(args.dim)),
+                                          requires_grad=True, manifold=self.manifold, c=self.c)
+
+        #self.linear = BLinear(self.manifold,self.output_dim,self.output_dim,
+                                #self.c,dropout=0,nonlin=None,use_bias=True) 
+
+        self.Elinear =  nn.Linear(self.output_dim,self.output_dim,bias=False)
+
+        if args.bias:
+            self.bias = nn.Parameter(torch.zeros(args.n_classes))
+        self.decode_adj = False
+
+    def decode(self, x, ed_idx):
+        #Note x here is a bit different, although it is (n,d''), this n is the the concatenation of many graphs
+        x0 = []
+        for i in range(len(ed_idx)):
+            #print(x[0 if i == 0 else ed_idx[i - 1]:ed_idx[i]])
+            #It means if i==0, then use x[0:ed_idx[0]], if i==1 then use x[ed_idx[0]:ed_idx[1]] ......
+            
+            #Klein Aggregation you can consider as a hyperbolic global mean pool
+            x0.append(self.manifold.proj(self.manifold.klein_to_poincare(self.manifold.klein_midpoint(
+                                                                        self.manifold.klein_proj(self.manifold.poincare_to_klein(
+                                                                        x[0 if i == 0 else ed_idx[i - 1]:ed_idx[i]],self.c),self.c)),
+                                                                        self.c),
+                                                                        self.c))
+            
+        x0 = torch.stack(x0)
+        #print('x0.shape:',x0.shape), (batch_size, d'')
+        #x0 = self.linear.forward(x0) #Still a hyperbolic vector
+        
+        #return self.manifold.logmap0(x0,self.c) #Must return a Euclidean Representation
+        #return (self.manifold.HCDist(x0, self.cls, self.c)) + self.bias #(batch_size,num_classes)
+        return self.Elinear(self.manifold.HCDist(x0, self.cls, self.c))+ self.bias
 
 
 #Decoders for node classification
@@ -185,13 +244,15 @@ model2decoder = {
     'HKPNet': LorentzDecoder,
     'LorentzShallow': LorentzDecoder,
     'BMLP': PoincareDecoder,
-    'BKNet': PoincareDecoder,
+    'BKNet': PoincareDecoder
 }
 
-#Decoders for link prediction
+#Decoders for graph classification
 gcdecoder = {
     'HGCN': LorentzPoolDecoder,
     'HyboNet': LorentzPoolDecoder,
     'HKPNet': LorentzPoolDecoder,
-    'LorentzShallow': LorentzPoolDecoder
+    'LorentzShallow': LorentzPoolDecoder,
+    'BKNet': PoincarePoolDecoder,
+    #'BKNet': PoincareDecoder
 }

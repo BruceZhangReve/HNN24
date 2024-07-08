@@ -26,11 +26,11 @@ config_args = {
     },
     'model_config': {
         'use_geoopt': (False, "which manifold class to use, if false then use basd.manifold"),
-        'AggKlein':(False, "if false, then use hyperboloid centorid for aggregation"),
-        'corr': (0,'0: d(x_i ominus x, x_k), 1: d(x_ik,x_k)'),
+        'AggKlein':(True, "if false, then use hyperboloid centorid for aggregation"),
+        'corr': (1,'0: d(x_i ominus x, x_k), 1: d(x_ik,x_k)'),
         'task': ('nc', 'which tasks to train on, can be any of [lp, nc]'),
         'model': ('BKNet', 'which encoder to use, can be any of [Shallow, MLP, HNN, GCN, GAT, HyperGCN, HyboNet,BKN]'),
-        'dim': (128, 'embedding dimension'),
+        'dim': (32, 'embedding dimension'),
         'manifold': ('PoincareBall', 'which manifold to use, can be any of [Euclidean, Hyperboloid, PoincareBall, Lorentz]'),
         'c': (1.0, 'hyperbolic radius, set to None for trainable curvature'),
         'r': (2., 'fermi-dirac decoder parameter for lp'),
@@ -46,11 +46,11 @@ config_args = {
         'double_precision': ('1', 'whether to use double precision'),
         'use_att': (0, 'whether to use hyperbolic attention or not'),
         'local_agg': (0, 'whether to local tangent space aggregation or not'),
-        'kernel_size': (8, 'number of kernels'),
+        'kernel_size': (6, 'number of kernels'),
         'KP_extent': (0.66, 'influence radius of each kernel point'),
         'radius': (1, 'radius used for kernel point init'),
         'deformable': (False, 'deformable kernel'),
-        'linear_before': (None, 'dim of linear before gcn')
+        'linear_before': (32, 'dim of linear before gcn')
     },
     'data_config': {
         'dataset': ('cornell', 'which dataset to use'),

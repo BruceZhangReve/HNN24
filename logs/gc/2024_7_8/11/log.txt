@@ -1,0 +1,66 @@
+INFO:root:Using: cuda:4
+INFO:root:Using seed 9.
+INFO:root:Dataset: PTC
+INFO:root:Num classes: 2
+INFO:root:GCModel(
+  (encoder): BKNet(
+    (linear_before): BLinear(
+      in_features=19, out_features=32, c=tensor([1.], device='cuda:4'), use_bias=1, act=None, dropout_rate=0.2
+      (dropout): Dropout(p=0.2, inplace=False)
+      (E_linear): Linear(in_features=19, out_features=32, bias=False)
+    )
+    (layers): Sequential(
+      (0): KPGraphConvolution(
+        (net): KernelPointAggregation(
+          (linears): ModuleList(
+            (0): BLinear(
+              in_features=32, out_features=32, c=tensor([1.], device='cuda:4'), use_bias=1, act=None, dropout_rate=0.2
+              (dropout): Dropout(p=0.2, inplace=False)
+              (E_linear): Linear(in_features=32, out_features=32, bias=False)
+            )
+            (1): BLinear(
+              in_features=32, out_features=32, c=tensor([1.], device='cuda:4'), use_bias=1, act=None, dropout_rate=0.2
+              (dropout): Dropout(p=0.2, inplace=False)
+              (E_linear): Linear(in_features=32, out_features=32, bias=False)
+            )
+            (2): BLinear(
+              in_features=32, out_features=32, c=tensor([1.], device='cuda:4'), use_bias=1, act=None, dropout_rate=0.2
+              (dropout): Dropout(p=0.2, inplace=False)
+              (E_linear): Linear(in_features=32, out_features=32, bias=False)
+            )
+            (3): BLinear(
+              in_features=32, out_features=32, c=tensor([1.], device='cuda:4'), use_bias=1, act=None, dropout_rate=0.2
+              (dropout): Dropout(p=0.2, inplace=False)
+              (E_linear): Linear(in_features=32, out_features=32, bias=False)
+            )
+            (4): BLinear(
+              in_features=32, out_features=32, c=tensor([1.], device='cuda:4'), use_bias=1, act=None, dropout_rate=0.2
+              (dropout): Dropout(p=0.2, inplace=False)
+              (E_linear): Linear(in_features=32, out_features=32, bias=False)
+            )
+            (5): BLinear(
+              in_features=32, out_features=32, c=tensor([1.], device='cuda:4'), use_bias=1, act=None, dropout_rate=0.2
+              (dropout): Dropout(p=0.2, inplace=False)
+              (E_linear): Linear(in_features=32, out_features=32, bias=False)
+            )
+          )
+          (act): BAct(c=tensor([1.], device='cuda:4'), act=<function relu at 0x7f749be33640>)
+        )
+      )
+    )
+  )
+  (decoder): PoincarePoolDecoder(
+    (linear): BLinear(
+      in_features=32, out_features=2, c=tensor([1.], device='cuda:4'), use_bias=True, act=None, dropout_rate=0
+      (dropout): Dropout(p=0, inplace=False)
+      (E_linear): Linear(in_features=32, out_features=2, bias=False)
+    )
+  )
+)
+INFO:root:Total number of parameters: 7300
+INFO:root:Epoch: 0002 lr: [0.0001, 0.0001] train_loss:  nan train_acc: 0.432886 train_f1: 0.000000 time: 0.9881s
+INFO:root:Epoch: 0002 val_loss:  nan val_acc: 0.500000 val_f1: 0.000000
+INFO:root:Epoch: 0004 lr: [0.0001, 0.0001] train_loss:  nan train_acc: 0.432886 train_f1: 0.000000 time: 0.9765s
+INFO:root:Epoch: 0004 val_loss:  nan val_acc: 0.500000 val_f1: 0.000000
+INFO:root:Epoch: 0006 lr: [0.0001, 0.0001] train_loss:  nan train_acc: 0.432886 train_f1: 0.000000 time: 1.0413s
+INFO:root:Epoch: 0006 val_loss:  nan val_acc: 0.500000 val_f1: 0.000000
