@@ -270,6 +270,7 @@ class BLinear(nn.Module):
             res = self.manifold.proj(self.manifold.mobius_add(res, #then mobius addition
                                     self.manifold.expmap0(bias, self.c), self.c), # a bias on manifold
                                     self.c)
+        #print('how about here?')
         return res
 
     def extra_repr(self):
@@ -343,9 +344,14 @@ class KernelPointAggregation(nn.Module):
         self.corr = corr
         #print('corr=', self.corr)
 
-        self.linears = nn.ModuleList([BLinear(manifold,in_channels,out_channels,
+        if self.corr == 0 or self.corr ==1:
+            #This is used for corr==0 or corr==1
+            self.linears = nn.ModuleList([BLinear(manifold,in_channels,out_channels,
                                              self.c,dropout,nonlin,use_bias) 
-                                      for _ in range(self.K)])
+                                            for _ in range(self.K)])
+        else:
+            #This is used for corr==2
+            self.single_linear = BLinear(manifold,in_channels,out_channels,self.c,dropout,nonlin,use_bias) 
 
         self.act = BAct(manifold, self.c, nonlin)
 
@@ -477,9 +483,10 @@ class KernelPointAggregation(nn.Module):
         return x0, x0_nei 
         
     def apply_kernel_transform(self, x_nei):
+        #Note this will be used for corr == 0 or corr == 1
         """
         Parameters:
-        - x_nei: A matrix that describes neighbor nodes' features (n,nei_num) 
+        - x_nei: A matrix that describes neighbor nodes' features (n,nei_num,d) 
 
         Returns:
         - res: A tensor of shape (n,K,num_nei,d)
@@ -497,24 +504,46 @@ class KernelPointAggregation(nn.Module):
         return torch.concat(res, dim = 1)
     
     def avg_kernel(self, x_nei_transform, x_nei_kernel_dis, AggKlein):
-        """
-        Parameters:
-        - klein_x_nei_transform: A tensor that contains transformed info, in klein coords#(n,K,nei_num,d')
-        - x_nei_kernel_dis: A tensor that contains kernel-feature pair wise distance, in poincare coords #(n,K,nei_num)
+        if self.corr == 0 or self.corr == 1:
+        #Parameters:
+        #- x_nei_transform: A tensor that contains transformed infos#(n,K,nei_num,d')
+        #- x_nei_kernel_dis: A tensor that contains kernel-feature pair wise distance#(n,K,nei_num)
 
-        Returns:
-        - res: A tensor of shape (n,nei_num,d'),the result for inner aggregation!
+        #Returns:
+        #- res: A tensor of shape (n,nei_num,d'),the result for inner aggregation!
 
-        Remarks:
-        This step is in fact the inner aggregation!
-        """
-        x_nei_transform = x_nei_transform.swapaxes(1, 2) # (n, nei_num, k, d')
-        x_nei_kernel_dis = x_nei_kernel_dis.swapaxes(1, 2)# (n, nei_num, k)
-        x_nei_kernel_dis = F.softmax(x_nei_kernel_dis, dim=-1)# (n, nei_num, k)
-        if self.AggKlein == True:
-            return self.manifold.klein_midpoint(x_nei_transform, x_nei_kernel_dis) #(n, nei_num, d')
+        #Remarks:
+        #This step is in fact the inner aggregation!
+            x_nei_transform = x_nei_transform.swapaxes(1, 2) # (n, nei_num, k, d')
+            x_nei_kernel_dis = x_nei_kernel_dis.swapaxes(1, 2)# (n, nei_num, k)
+
+            if self.corr == 1:
+                #print("Doing a softmax normalization is better for this approach")
+                x_nei_kernel_dis = F.softmax(x_nei_kernel_dis, dim=-1)# (n, nei_num, k)
+        
+            if self.AggKlein == True:
+                return self.manifold.klein_midpoint(x_nei_transform, x_nei_kernel_dis) #(n, nei_num, d')
+            else:
+                return self.manifold.hyperboloid_centroid(x_nei_transform, self.c ,x_nei_kernel_dis)
+
         else:
-            return self.manifold.hyperboloid_centroid(x_nei_transform, self.c ,x_nei_kernel_dis)
+        #Parameters:
+        #- x_nei_transform(x_nei infact): A tensor that contains transformed infos#(n,nei_num,d)
+        #- x_nei_kernel_dis: A tensor that contains kernel-feature pair wise distance#(n,K,nei_num)
+
+        #Returns:
+        #- res: A tensor of shape (n,nei_num,d),the result for inner aggregation!
+
+        #Remarks:
+        #This step is in fact the inner aggregation!
+            x_nei_kernel_dis = x_nei_kernel_dis.swapaxes(1, 2)# (n, nei_num, k)
+            k = x_nei_kernel_dis.shape[-1]
+            x_nei_transform = x_nei_transform.unsqueeze(2).expand(-1, -1, k, -1) #now it's (n, nei_num, k, d)
+            if self.AggKlein == True:
+                return self.manifold.klein_midpoint(x_nei_transform, x_nei_kernel_dis) #(n, nei_num, d)
+            else:
+                return self.manifold.hyperboloid_centroid(x_nei_transform, self.c ,x_nei_kernel_dis) #(n, nei_num, d)
+            
 
     #Note: We have not touched this part yet
     """
@@ -550,12 +579,17 @@ class KernelPointAggregation(nn.Module):
         kernels=self.get_kernel_pos(x, nei, nei_mask, sample, sample_num, transp= not transp) # (n, k, d) 
         #Confuse: if we transport_x back to the origin, then we shouldn't transport kernels to x's, original HKN code has a mistake
 
-        if self.corr == 0:
+        if self.corr == 0 or self.corr == 2:
             #Use d(xi ominus x, xk)
             x_nei_kernel_dis = self.get_nei_kernel_dis(kernels, x_nei)  # (n, k, nei_num)
             nei_mask = nei_mask.repeat(1, 1, self.K).view(n, self.K, nei_num)
             x_nei_kernel_dis = x_nei_kernel_dis * nei_mask  # (n, k, nei_num)
-            x_nei_transform = self.apply_kernel_transform(x_nei) #(n,K,nei_num,d)
+            if self.corr == 2:
+                #This is sth newly proposed to ease computation
+                pass
+            else:
+                #This is the HKN old way
+                x_nei_transform = self.apply_kernel_transform(x_nei) #(n,K,nei_num,d)
         else:
             #print('corr == 1') #Use d(xik, xk)
             x_nei_transform = self.apply_kernel_transform(x_nei) #(n,K,nei_num,d)
@@ -565,30 +599,60 @@ class KernelPointAggregation(nn.Module):
             nei_mask = nei_mask.repeat(1, 1, self.K).view(n, self.K, nei_num)
             x_nei_kernel_dis = x_nei_kernel_dis * nei_mask  # (n, k, nei_num)
 
+        if self.corr == 2:
+            #The new proposed approach to ease computation
+            if self.AggKlein == True:
+                klein_x_nei = self.manifold.poincare_to_klein(x_nei, self.c)#(n,nei_num,d)
+                klein_x_nei = self.manifold.klein_proj(klein_x_nei, self.c)#Numerical reasons
+                klein_x_nei = self.avg_kernel(klein_x_nei, x_nei_kernel_dis, self.AggKlein)#inner_agg#(n,nei_num,d) in Klein
+                poincare_x_nei = self.manifold.klein_to_poincare(klein_x_nei, self.c) #(n,nei_num,d) in Poincare
+                poincare_x_nei_transform = self.single_linear.forward(poincare_x_nei) #(n,nei_num,d')
+                #print('coming here')
+                poincare_x_nei_transform = self.manifold.proj(poincare_x_nei_transform, self.c) #(n,nei_num,d') for numeric reasons
+                klein_x_nei_transform = self.manifold.poincare_to_klein(poincare_x_nei_transform, self.c)#(n,nei_num,d')
+                klein_x_nei_transform = self.manifold.klein_proj(klein_x_nei_transform, self.c)#Numerical reasons
+                klein_x_final = self.manifold.klein_midpoint(klein_x_nei_transform)#outer_agg#(n,d')# in Klein
+                x_final = self.manifold.klein_to_poincare(klein_x_final, self.c)#(n,d')# in Poincare
+                x_final = self.manifold.proj(x_final, self.c) #Numerical reasons
+            else:
+                #print("Using Hyperboloid Centroid for Aggregation")
+                hyperboloid_x_nei = self.manifold.poincare_to_hyperboloid(x_nei, self.c)#(n,nei_num,d)
+                hyperboloid_x_nei = self.manifold.hyperboloid_proj(hyperboloid_x_nei, self.c) #Numerical reasons
+                hyperboloid_x_nei = self.avg_kernel(hyperboloid_x_nei, x_nei_kernel_dis, not self.AggKlein)#inner_agg#(n,nei_num,d) on hyperboloid
+                poincare_x_nei = self.manifold.hyperboloid_to_poincare(hyperboloid_x_nei, self.c) #(n,nei_num,d) in Poincare
+                poincare_x_nei_transform = self.single_linear.forward(poincare_x_nei) #(n,nei_num,d')
+                #print('coming here')
+                poincare_x_nei_transform = self.manifold.proj(poincare_x_nei_transform, self.c) #(n,nei_num,d') for numeric reasons
+                hyperboloid_x_nei_transform = self.manifold.poincare_to_hyperboloid(poincare_x_nei_transform, self.c)#(n,nei_num,d')
+                hyperboloid_x_nei_transform = self.manifold.hyperboloid_proj(hyperboloid_x_nei_transform, self.c) #Numerical reasons
+                hyperboloid_x_final = self.manifold.hyperboloid_centroid(hyperboloid_x_nei_transform, self.c)#outer_agg#(n,d')# on hyperboloid
+                x_final = self.manifold.hyperboloid_to_poincare(hyperboloid_x_final, self.c)#(n,d')# in Poincare
+                x_final = self.manifold.proj(x_final, self.c) #Numerical reasons
 
-        if self.AggKlein == True:
-            #print("Using Klein Midpoint for Aggregation")
-            klein_x_nei_transform = self.manifold.poincare_to_klein(x_nei_transform,c=self.c)#(n,K,nei_num,d')
-            klein_x_nei_transform = self.manifold.klein_proj(klein_x_nei_transform, self.c)#Numerical reasons
-            klein_x_nei_transform = self.avg_kernel(klein_x_nei_transform, x_nei_kernel_dis, self.AggKlein)#inner_agg#(n,nei_num,d') in Klein
-            #print(klein_x_nei_transform.shape)
-            klein_x_final = self.manifold.klein_midpoint(klein_x_nei_transform)#outer_agg#(n,d')# in Klein
-            #klein_x_final = self.manifold.klein_proj(klein_x_final, self.c)#Add this sentence gives nan!
-            x_final = self.manifold.klein_to_poincare(klein_x_final,c=self.c)#(n,d')# in Poincare
-            x_final = self.manifold.proj(x_final,c=self.c) #Numerical reasons
         else:
-            #print("Using Hyperboloid Centroid for Aggregation")
-            hyperboloid_x_nei_transform = self.manifold.poincare_to_hyperboloid(x_nei_transform,c=self.c)#(n,K,nei_num,d')
-            hyperboloid_x_nei_transform = self.manifold.hyperboloid_proj(hyperboloid_x_nei_transform, self.c) #Numerical reasons
-            hyperboloid_x_nei_transform = self.avg_kernel(hyperboloid_x_nei_transform, x_nei_kernel_dis, not self.AggKlein)#inner_agg#(n,nei_num,d') on hyperboloid
-            #print("After InngerAgg")
-            hyperboloid_x_final = self.manifold.hyperboloid_centroid(hyperboloid_x_nei_transform,c=self.c)#outer_agg#(n,d')# on hyperboloid
-            x_final = self.manifold.hyperboloid_to_poincare(hyperboloid_x_final,c=self.c)#(n,d')# in Poincare
-            x_final = self.manifold.proj(x_final,c=self.c) #Numerical reasons
+            #Old ways like KPConv
+            if self.AggKlein == True:
+                #print("Using Klein Midpoint for Aggregation")
+                klein_x_nei_transform = self.manifold.poincare_to_klein(x_nei_transform,c=self.c)#(n,K,nei_num,d')
+                klein_x_nei_transform = self.manifold.klein_proj(klein_x_nei_transform, self.c)#Numerical reasons
+                klein_x_nei_transform = self.avg_kernel(klein_x_nei_transform, x_nei_kernel_dis, self.AggKlein)#inner_agg#(n,nei_num,d') in Klein
+                #print(klein_x_nei_transform.shape)
+                klein_x_final = self.manifold.klein_midpoint(klein_x_nei_transform)#outer_agg#(n,d')# in Klein
+                #klein_x_final = self.manifold.klein_proj(klein_x_final, self.c)#Add this sentence gives nan!
+                x_final = self.manifold.klein_to_poincare(klein_x_final,c=self.c)#(n,d')# in Poincare
+                x_final = self.manifold.proj(x_final,c=self.c) #Numerical reasons
+            else:
+                #print("Using Hyperboloid Centroid for Aggregation")
+                hyperboloid_x_nei_transform = self.manifold.poincare_to_hyperboloid(x_nei_transform,c=self.c)#(n,K,nei_num,d')
+                hyperboloid_x_nei_transform = self.manifold.hyperboloid_proj(hyperboloid_x_nei_transform, self.c) #Numerical reasons
+                hyperboloid_x_nei_transform = self.avg_kernel(hyperboloid_x_nei_transform, x_nei_kernel_dis, not self.AggKlein)#inner_agg#(n,nei_num,d') on hyperboloid
+                #print("After InngerAgg")
+                hyperboloid_x_final = self.manifold.hyperboloid_centroid(hyperboloid_x_nei_transform,c=self.c)#outer_agg#(n,d')# on hyperboloid
+                x_final = self.manifold.hyperboloid_to_poincare(hyperboloid_x_final,c=self.c)#(n,d')# in Poincare
+                x_final = self.manifold.proj(x_final,c=self.c) #Numerical reasons
 
         x_final = self.act.forward(x_final)
-
-        return x_final
+        return self.manifold.proj(x_final, self.c)
 
 
 #This is a simple pack up of KPAgg
