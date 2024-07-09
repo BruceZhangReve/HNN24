@@ -197,16 +197,23 @@ class PoincarePoolDecoder(Decoder):
         self.output_dim = args.n_classes
         self.use_bias = args.bias
         self.c = c
-        self.cls = base_ManifoldParameter(self.manifold.random_normal((args.n_classes, args.dim),c=self.c, std=1./math.sqrt(args.dim)),
+        self.cls_num = args.n_classes
+        #self.cls = base_ManifoldParameter(self.manifold.random_normal((args.n_classes, args.dim),c=self.c, std=1./math.sqrt(args.dim)),
+                                          #requires_grad=True, manifold=self.manifold, c=self.c)
+        self.cls = base_ManifoldParameter(self.manifold.random_normal((2*self.cls_num, args.dim),c=self.c, std=1./math.sqrt(args.dim)),
                                           requires_grad=True, manifold=self.manifold, c=self.c)
 
         #self.linear = BLinear(self.manifold,self.output_dim,self.output_dim,
                                 #self.c,dropout=0,nonlin=None,use_bias=True) 
 
-        self.Elinear =  nn.Linear(self.output_dim,self.output_dim,bias=False)
+        #self.Elinear =  nn.Linear(self.output_dim,self.output_dim,bias=False)
+        self.Elinear =  nn.Linear(2*self.cls_num,self.cls_num,bias=True)
+        #self.Elinear =  nn.Sequential(nn.Linear(self.output_dim,5*self.output_dim,bias=True),
+                                      #nn.Linear(5*self.output_dim,self.output_dim,bias=False))
 
         if args.bias:
             self.bias = nn.Parameter(torch.zeros(args.n_classes))
+
         self.decode_adj = False
 
     def decode(self, x, ed_idx):
@@ -228,8 +235,9 @@ class PoincarePoolDecoder(Decoder):
         #x0 = self.linear.forward(x0) #Still a hyperbolic vector
         
         #return self.manifold.logmap0(x0,self.c) #Must return a Euclidean Representation
+
         #return (self.manifold.HCDist(x0, self.cls, self.c)) + self.bias #(batch_size,num_classes)
-        return self.Elinear(self.manifold.HCDist(x0, self.cls, self.c))+ self.bias
+        return self.Elinear(self.manifold.HCDist(x0, self.cls, self.c))#+ self.bias
 
 
 #Decoders for node classification

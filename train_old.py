@@ -152,61 +152,62 @@ def train(args):
             outs = None
             labs = None
             bats = 0
-            
             for i in range(0, len(data['idx_train']), args.batch_size):
                 optimizer.zero_grad()
                 selected_idx = data['idx_train'][i : i + args.batch_size]
                 if len(selected_idx) == 0:
                     continue
                 if args.model == 'HKPNet':
+                    #Note ed_idx seems to be the index of graphs
                     nei, nei_mask, features, labels, ed_idx = dataset[selected_idx]
                     embeddings = model.encode(features, (nei, nei_mask))
                 elif args.model == 'BKNet':
+                    #shape(nei/nei_mask)=(sum(n),max_nei_num), like concat all graph neibor together
+                    #It works if every node on every graph is represented by different numbers yeah
                     nei, nei_mask, features, labels, ed_idx = dataset[selected_idx]
                     embeddings = model.encode(features, (nei, nei_mask))
                 else:
                     adj, features, labels, ed_idx = dataset[selected_idx]
                     embeddings = model.encode(features, adj)
-                
-                train_metrics = model.compute_metrics(embeddings, labels, ed_idx, type=2)
+                #print(embeddings.shape,labels.shape,ed_idx.shape,len(ed_idx))
+                train_metrics = model.compute_metrics(embeddings, labels, ed_idx, type = 2)
                 tot_metrics['loss'] += train_metrics['loss'].detach().cpu().numpy()
                 bats += 1
                 train_metrics['loss'].backward()
-                
                 if args.grad_clip is not None:
                     max_norm = float(args.grad_clip)
-                    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
+                    all_params = list(model.parameters())
+                    for param in all_params:
+                        torch.nn.utils.clip_grad_norm_(param, max_norm)
                 optimizer.step()
                 
-                if outs is None:
+                if outs == None:
                     outs = train_metrics['output']
                 else:
                     outs = torch.cat([outs, train_metrics['output']], 0)
-                if labs is None:
+                if labs == None:
                     labs = labels
                 else:
                     labs = torch.cat([labs, labels], 0)
-            
             lr_scheduler.step()
             tot_metrics['acc'], tot_metrics['f1'] = acc_f1((outs), (labs), f1_average)
             tot_metrics['loss'] /= bats
 
             if (epoch + 1) % args.log_freq == 0:
                 logging.info(" ".join(['Epoch: {:04d}'.format(epoch + 1),
-                                       'lr: {}'.format(lr_scheduler.get_last_lr()),
-                                       format_metrics(tot_metrics, 'train'),
-                                       'time: {:.4f}s'.format(time.time() - t)
-                                       ]))
-
+                                    'lr: {}'.format(lr_scheduler.get_last_lr()),
+                                    format_metrics(tot_metrics, 'train'),
+                                    'time: {:.4f}s'.format(time.time() - t)
+                                    ]))
             if (epoch + 1) % args.eval_freq == 0:
                 model.eval()
-                val_metrics = {'loss': 0, 'acc': 0, 'f1': 0}
+                tot_metrics = {'loss': 0, 'acc': 0, 'f1': 0}
+                minibatch = args.batch_size
                 outs = None
                 labs = None
                 bats = 0
-                
-                for i in range(0, len(data['idx_val']), args.batch_size):
-                    selected_idx = data['idx_val'][i : i + args.batch_size]
+                for i in range(0, len(data['idx_val']), minibatch):
+                    selected_idx = data['idx_val'][i : i + minibatch]
                     if len(selected_idx) == 0:
                         continue
                     if args.model == 'HKPNet':
@@ -218,35 +219,30 @@ def train(args):
                     else:
                         adj, features, labels, ed_idx = dataset[selected_idx]
                         embeddings = model.encode(features, adj)
-                    
-                    metrics = model.compute_metrics(embeddings, labels, ed_idx, type=2)
-                    val_metrics['loss'] += metrics['loss'].detach().cpu().numpy()
+                    val_metrics = model.compute_metrics(embeddings, labels, ed_idx, type = 2)
+                    tot_metrics['loss'] += val_metrics['loss'].detach().cpu().numpy()
                     bats += 1
-                    
-                    if outs is None:
-                        outs = metrics['output']
+                    if outs == None:
+                        outs = val_metrics['output']
                     else:
-                        outs = torch.cat([outs, metrics['output']], 0)
-                    if labs is None:
+                        outs = torch.cat([outs, val_metrics['output']], 0)
+                    if labs == None:
                         labs = labels
                     else:
                         labs = torch.cat([labs, labels], 0)
-                
-                val_metrics['acc'], val_metrics['f1'] = acc_f1((outs), (labs), f1_average)
-                val_metrics['loss'] /= bats
-                
+                tot_metrics['acc'], tot_metrics['f1'] = acc_f1((outs), (labs), f1_average)
+                tot_metrics['loss'] /= bats
                 if (epoch + 1) % args.log_freq == 0:
-                    logging.info(" ".join(['Epoch: {:04d}'.format(epoch + 1), format_metrics(val_metrics, 'val')]))
-
-                if model.has_improved(best_val_metrics, val_metrics):
-                    best_val_metrics = val_metrics
+                    logging.info(" ".join(['Epoch: {:04d}'.format(epoch + 1), format_metrics(tot_metrics, 'val')]))
+                if model.has_improved(best_val_metrics, tot_metrics):
+                    best_val_metrics = tot_metrics
                     best_test_metrics = {'loss': 0, 'acc': 0, 'f1': 0}
+                    minibatch = args.batch_size
                     outs = None
                     labs = None
                     bats = 0
-                    
-                    for i in range(0, len(data['idx_test']), args.batch_size):
-                        selected_idx = data['idx_test'][i : i + args.batch_size]
+                    for i in range(0, len(data['idx_test']), minibatch):
+                        selected_idx = data['idx_test'][i : i + minibatch]
                         if len(selected_idx) == 0:
                             continue
                         if args.model == 'HKPNet':
@@ -258,42 +254,42 @@ def train(args):
                         else:
                             adj, features, labels, ed_idx = dataset[selected_idx]
                             embeddings = model.encode(features, adj)
-                        
-                        test_metrics = model.compute_metrics(embeddings, labels, ed_idx, type=2)
-                        best_test_metrics['loss'] += test_metrics['loss'].detach().cpu().numpy()
+                        test_metrics = model.compute_metrics(embeddings, labels, ed_idx, type = 2)                       
+
                         bats += 1
-                        
-                        if outs is None:
+                        tot_metrics['loss'] += test_metrics['loss'].detach().cpu().numpy()
+                        if outs == None:
                             outs = test_metrics['output']
                         else:
                             outs = torch.cat([outs, test_metrics['output']], 0)
-                        if labs is None:
+                        if labs == None:
                             labs = labels
                         else:
                             labs = torch.cat([labs, labels], 0)
-                    
-                    best_test_metrics['loss'] /= bats
-                    if outs is not None:
+                    if outs == None:
+                        best_test_metrics = best_val_metrics
+                    else:
+                        best_val_metrics = tot_metrics
                         best_test_metrics['acc'], best_test_metrics['f1'] = acc_f1((outs), (labs), f1_average)
+                        best_test_metrics['loss'] /= bats
                     counter = 0
                 else:
                     counter += 1
                     if counter == args.patience and epoch > args.min_epochs:
                         logging.info("Early stopping")
                         break
-
         logging.info("Optimization Finished!")
         logging.info("Total time elapsed: {:.4f}s".format(time.time() - t_total))
-
-        if best_test_metrics['loss'] == 0:
+        if not best_test_metrics:
             model.eval()
             best_test_metrics = {'loss': 0, 'acc': 0, 'f1': 0}
+            tot_metrics = {'loss': 0, 'acc': 0, 'f1': 0}
+            minibatch = args.batch_size
             outs = None
             labs = None
             bats = 0
-            
-            for i in range(0, len(data['idx_test']), args.batch_size):
-                selected_idx = data['idx_test'][i : i + args.batch_size]
+            for i in range(0, len(data['idx_test']), minibatch):
+                selected_idx = data['idx_test'][i : i + minibatch]
                 if len(selected_idx) == 0:
                     continue
                 if args.model == 'HKPNet':
@@ -305,28 +301,27 @@ def train(args):
                 else:
                     adj, features, labels, ed_idx = dataset[selected_idx]
                     embeddings = model.encode(features, adj)
+                test_metrics = model.compute_metrics(embeddings, labels, ed_idx, type = 2)
                 
-                test_metrics = model.compute_metrics(embeddings, labels, ed_idx, type=2)
-                best_test_metrics['loss'] += test_metrics['loss'].detach().cpu().numpy()
                 bats += 1
-                
-                if outs is None:
+                tot_metrics['loss'] += test_metrics['loss'].detach().cpu().numpy()
+                if outs == None:
                     outs = test_metrics['output']
                 else:
                     outs = torch.cat([outs, test_metrics['output']], 0)
-                if labs is None:
+                if labs == None:
                     labs = labels
                 else:
                     labs = torch.cat([labs, labels], 0)
-            
-            best_test_metrics['loss'] /= bats
-            if outs is not None:
+            if outs == None:
+                best_test_metrics = best_val_metrics
+            else:
+                best_val_metrics = tot_metrics
                 best_test_metrics['acc'], best_test_metrics['f1'] = acc_f1((outs), (labs), f1_average)
-
+                best_test_metrics['loss'] /= bats
+                    
         logging.info(" ".join(["Val set results:", format_metrics(best_val_metrics, 'val')]))
         logging.info(" ".join(["Test set results:", format_metrics(best_test_metrics, 'test')]))
-
- 
     #Starting form here is node classicication
     else:
         if args.model == 'HKPNet':
