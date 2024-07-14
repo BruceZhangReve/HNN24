@@ -1,0 +1,148 @@
+INFO:root:Using: cuda:7
+INFO:root:Using seed 5.
+INFO:root:Dataset: texas
+INFO:root:Num classes: 5
+INFO:root:NCModel(
+  (encoder): BKNet(
+    (linear_before): BLinear(
+      in_features=1703, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=False, act=None, dropout_rate=0.3
+      (dropout): Dropout(p=0.3, inplace=False)
+      (E_linear): Linear(in_features=1703, out_features=32, bias=False)
+    )
+    (layers): Sequential(
+      (0): KPGraphConvolution(
+        (net): KernelPointAggregation(
+          (linears): ModuleList(
+            (0): BLinear(
+              in_features=32, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=1, act=None, dropout_rate=0.3
+              (dropout): Dropout(p=0.3, inplace=False)
+              (E_linear): Linear(in_features=32, out_features=32, bias=False)
+            )
+            (1): BLinear(
+              in_features=32, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=1, act=None, dropout_rate=0.3
+              (dropout): Dropout(p=0.3, inplace=False)
+              (E_linear): Linear(in_features=32, out_features=32, bias=False)
+            )
+            (2): BLinear(
+              in_features=32, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=1, act=None, dropout_rate=0.3
+              (dropout): Dropout(p=0.3, inplace=False)
+              (E_linear): Linear(in_features=32, out_features=32, bias=False)
+            )
+            (3): BLinear(
+              in_features=32, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=1, act=None, dropout_rate=0.3
+              (dropout): Dropout(p=0.3, inplace=False)
+              (E_linear): Linear(in_features=32, out_features=32, bias=False)
+            )
+          )
+          (MLP_f): BMLP(
+            (linear1): BLinear(
+              in_features=32, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=1, act=None, dropout_rate=0.3
+              (dropout): Dropout(p=0.3, inplace=False)
+              (E_linear): Linear(in_features=32, out_features=32, bias=False)
+            )
+            (act): BAct(c=tensor([1.], device='cuda:7'), act=<function relu at 0x7fed221576d0>)
+            (linear2): BLinear(
+              in_features=32, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=1, act=None, dropout_rate=0.3
+              (dropout): Dropout(p=0.3, inplace=False)
+              (E_linear): Linear(in_features=32, out_features=32, bias=False)
+            )
+          )
+          (MLP_fi): BMLP(
+            (linear1): BLinear(
+              in_features=32, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=1, act=None, dropout_rate=0.3
+              (dropout): Dropout(p=0.3, inplace=False)
+              (E_linear): Linear(in_features=32, out_features=32, bias=False)
+            )
+            (act): BAct(c=tensor([1.], device='cuda:7'), act=<function relu at 0x7fed221576d0>)
+            (linear2): BLinear(
+              in_features=32, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=1, act=None, dropout_rate=0.3
+              (dropout): Dropout(p=0.3, inplace=False)
+              (E_linear): Linear(in_features=32, out_features=32, bias=False)
+            )
+          )
+        )
+      )
+      (1): KPGraphConvolution(
+        (net): KernelPointAggregation(
+          (linears): ModuleList(
+            (0): BLinear(
+              in_features=32, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=1, act=None, dropout_rate=0.3
+              (dropout): Dropout(p=0.3, inplace=False)
+              (E_linear): Linear(in_features=32, out_features=32, bias=False)
+            )
+            (1): BLinear(
+              in_features=32, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=1, act=None, dropout_rate=0.3
+              (dropout): Dropout(p=0.3, inplace=False)
+              (E_linear): Linear(in_features=32, out_features=32, bias=False)
+            )
+            (2): BLinear(
+              in_features=32, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=1, act=None, dropout_rate=0.3
+              (dropout): Dropout(p=0.3, inplace=False)
+              (E_linear): Linear(in_features=32, out_features=32, bias=False)
+            )
+            (3): BLinear(
+              in_features=32, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=1, act=None, dropout_rate=0.3
+              (dropout): Dropout(p=0.3, inplace=False)
+              (E_linear): Linear(in_features=32, out_features=32, bias=False)
+            )
+          )
+          (MLP_f): BMLP(
+            (linear1): BLinear(
+              in_features=32, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=1, act=None, dropout_rate=0.3
+              (dropout): Dropout(p=0.3, inplace=False)
+              (E_linear): Linear(in_features=32, out_features=32, bias=False)
+            )
+            (act): BAct(c=tensor([1.], device='cuda:7'), act=<function relu at 0x7fed221576d0>)
+            (linear2): BLinear(
+              in_features=32, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=1, act=None, dropout_rate=0.3
+              (dropout): Dropout(p=0.3, inplace=False)
+              (E_linear): Linear(in_features=32, out_features=32, bias=False)
+            )
+          )
+          (MLP_fi): BMLP(
+            (linear1): BLinear(
+              in_features=32, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=1, act=None, dropout_rate=0.3
+              (dropout): Dropout(p=0.3, inplace=False)
+              (E_linear): Linear(in_features=32, out_features=32, bias=False)
+            )
+            (act): BAct(c=tensor([1.], device='cuda:7'), act=<function relu at 0x7fed221576d0>)
+            (linear2): BLinear(
+              in_features=32, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=1, act=None, dropout_rate=0.3
+              (dropout): Dropout(p=0.3, inplace=False)
+              (E_linear): Linear(in_features=32, out_features=32, bias=False)
+            )
+          )
+        )
+      )
+    )
+  )
+  (decoder): PoincareDecoder()
+)
+INFO:root:Total number of parameters: 71845
+INFO:root:Epoch: 0005 lr: [0.0002, 0.0002] train_loss:  nan train_acc: 0.094262 train_f1: 0.094262 time: 0.1471s
+INFO:root:Epoch: 0005 val_loss:  nan val_acc: 0.090909 val_f1: 0.090909
+INFO:root:Epoch: 0010 lr: [0.0002, 0.0002] train_loss:  nan train_acc: 0.094262 train_f1: 0.094262 time: 0.1510s
+INFO:root:Epoch: 0010 val_loss:  nan val_acc: 0.090909 val_f1: 0.090909
+INFO:root:Epoch: 0015 lr: [0.0002, 0.0002] train_loss:  nan train_acc: 0.094262 train_f1: 0.094262 time: 0.1416s
+INFO:root:Epoch: 0015 val_loss:  nan val_acc: 0.090909 val_f1: 0.090909
+INFO:root:Epoch: 0020 lr: [0.0002, 0.0002] train_loss:  nan train_acc: 0.094262 train_f1: 0.094262 time: 0.1421s
+INFO:root:Epoch: 0020 val_loss:  nan val_acc: 0.090909 val_f1: 0.090909
+INFO:root:Epoch: 0025 lr: [0.0002, 0.0002] train_loss:  nan train_acc: 0.094262 train_f1: 0.094262 time: 0.1462s
+INFO:root:Epoch: 0025 val_loss:  nan val_acc: 0.090909 val_f1: 0.090909
+INFO:root:Epoch: 0030 lr: [0.0002, 0.0002] train_loss:  nan train_acc: 0.094262 train_f1: 0.094262 time: 0.1421s
+INFO:root:Epoch: 0030 val_loss:  nan val_acc: 0.090909 val_f1: 0.090909
+INFO:root:Epoch: 0035 lr: [0.0002, 0.0002] train_loss:  nan train_acc: 0.094262 train_f1: 0.094262 time: 0.1469s
+INFO:root:Epoch: 0035 val_loss:  nan val_acc: 0.090909 val_f1: 0.090909
+INFO:root:Epoch: 0040 lr: [0.0002, 0.0002] train_loss:  nan train_acc: 0.094262 train_f1: 0.094262 time: 0.1487s
+INFO:root:Epoch: 0040 val_loss:  nan val_acc: 0.090909 val_f1: 0.090909
+INFO:root:Epoch: 0045 lr: [0.0002, 0.0002] train_loss:  nan train_acc: 0.094262 train_f1: 0.094262 time: 0.1480s
+INFO:root:Epoch: 0045 val_loss:  nan val_acc: 0.090909 val_f1: 0.090909
+INFO:root:Epoch: 0050 lr: [0.0002, 0.0002] train_loss:  nan train_acc: 0.094262 train_f1: 0.094262 time: 0.1478s
+INFO:root:Epoch: 0050 val_loss:  nan val_acc: 0.090909 val_f1: 0.090909
+INFO:root:Epoch: 0055 lr: [0.0002, 0.0002] train_loss:  nan train_acc: 0.094262 train_f1: 0.094262 time: 0.1471s
+INFO:root:Epoch: 0055 val_loss:  nan val_acc: 0.090909 val_f1: 0.090909
+INFO:root:Epoch: 0060 lr: [0.0002, 0.0002] train_loss:  nan train_acc: 0.094262 train_f1: 0.094262 time: 0.1448s
+INFO:root:Epoch: 0060 val_loss:  nan val_acc: 0.090909 val_f1: 0.090909
+INFO:root:Epoch: 0065 lr: [0.0002, 0.0002] train_loss:  nan train_acc: 0.094262 train_f1: 0.094262 time: 0.1558s
+INFO:root:Epoch: 0065 val_loss:  nan val_acc: 0.090909 val_f1: 0.090909
+INFO:root:Epoch: 0070 lr: [0.0002, 0.0002] train_loss:  nan train_acc: 0.094262 train_f1: 0.094262 time: 0.1420s

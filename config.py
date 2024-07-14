@@ -28,6 +28,7 @@ config_args = {
         'use_geoopt': (False, "which manifold class to use, if false then use basd.manifold"),
         'AggKlein':(True, "if false, then use hyperboloid centorid for aggregation"),
         'corr': (1,'0: Agg{x_ik,d(x_i ominus x, x_k)}, 1: Agg{x_ik,d(x_ik,x_k)}, 2:Agg{x_i ominus x,d(x_i ominus x, x_k)}'),
+        'nei_agg': (2, '0: simple uniform weight midpoint/centroid, 1: attention based neighbor aggregation, 2: GIN based neighbor aggregation'),
         'task': ('nc', 'which tasks to train on, can be any of [lp, nc]'),
         'model': ('BKNet', 'which encoder to use, can be any of [Shallow, MLP, HNN, GCN, GAT, HyperGCN, HyboNet,BKN]'),
         'dim': (32, 'embedding dimension'),

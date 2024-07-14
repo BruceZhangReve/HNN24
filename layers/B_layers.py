@@ -123,9 +123,6 @@ def gather(x, idx, method=2):
 Section 2: Poincare Linears
 """
 
-"""
-#BLinear -v1
-
 class BLinear(nn.Module):
     def __init__(self, manifold, in_features, out_features, c, dropout, nonlin=None, use_bias=True):
         super(BLinear, self).__init__()
@@ -136,6 +133,7 @@ class BLinear(nn.Module):
         self.dropout = dropout
         self.use_bias = use_bias
         self.act = nonlin
+        #self.act = None
 
         # Initialize weight and bias parameters
         self.weight = nn.Parameter(torch.Tensor(out_features, in_features).to(torch.float64))
@@ -152,8 +150,7 @@ class BLinear(nn.Module):
         # Apply dropout to weights
         drop_weight = F.dropout(self.weight, self.dropout, training=self.training)
         # Perform Mobius matrix-vector multiplication
-        #mv = self.manifold.mobius_matvec(drop_weight, x, self.c)
-        mv = self.manifold.mobius_matvec(self.weight, x, self.c)
+        mv = self.manifold.mobius_matvec(drop_weight, x, self.c)
         # Project the result
         res = self.manifold.proj(mv, self.c)
 
@@ -165,7 +162,7 @@ class BLinear(nn.Module):
             res = self.manifold.mobius_add(res, hyp_bias, self.c)
             res = self.manifold.proj(res, self.c)
 
-        # Apply the activation function if specified
+        #We implement an independent activation layer for some flexibility
         if self.act is not None:
             xt = self.act(self.manifold.logmap0(res, c=self.c))
             xt = self.manifold.proj_tan0(xt, c=self.c)
@@ -178,107 +175,6 @@ class BLinear(nn.Module):
             self.in_features, self.out_features, self.c, self.use_bias, self.act)
 #BLinear(manifold, in_features, out_features, c=c, dropout=0.5, act=nonlin, use_bias=True,)
 
-
-"""
-
-"""
-#BLinear -v2, less operations, solves vanishing gradient issue, but not good performance?
-
-class BLinear(nn.Module):
-    def __init__(self, manifold, in_features, out_features, c, dropout, nonlin=None, use_bias=True):
-        super(BLinear, self).__init__()
-        self.manifold = manifold
-        self.in_features = in_features
-        self.out_features = out_features
-        self.c = c
-        self.dropout = dropout
-        self.use_bias = use_bias
-        self.act = nonlin
-        self.E_linear = nn.Linear(in_features, out_features, bias = use_bias).to(torch.float64)
-
-        self.dropout_rate = dropout
-        self.dropout = nn.Dropout(dropout)
-
-        self.reset_parameters()
-
-    def reset_parameters(self):
-        # 使用 Xavier 初始化 E_linear 的权重
-        nn.init.xavier_uniform_(self.E_linear.weight, gain=nn.init.calculate_gain('relu'))
-        if self.E_linear.bias is not None:
-            nn.init.constant_(self.E_linear.bias, 0)
-
-    def forward(self, x):
-        # Apply dropout to the input
-        x = self.dropout(x)
-
-        x_tan = self.manifold.logmap0(x, self.c)
-        x_tan = self.manifold.proj_tan0(x_tan, self.c)
-        x_tan = self.E_linear(x_tan)
-        if self.act is not None:
-            x_tan = self.act(x_tan)
-        # Project the result
-        res = self.manifold.proj(self.manifold.expmap0(x_tan, c=self.c), c=self.c)
-        return res
-
-    def extra_repr(self):
-        return 'in_features={}, out_features={}, c={}, use_bias={}, act={}, dropout_rate={}'.format(
-            self.in_features, self.out_features, self.c, self.use_bias, self.act, self.dropout_rate)
-#BLinear(manifold, in_features, out_features, c=c, dropout=0.5, act=nonlin, use_bias=True)
-"""
-
-
-#BLinear -v4, 
-
-class BLinear(nn.Module):
-    def __init__(self, manifold, in_features, out_features, c, dropout, nonlin=None, use_bias=True):
-        super(BLinear, self).__init__()
-        self.manifold = manifold
-        self.in_features = in_features
-        self.out_features = out_features
-        self.c = c
-        self.dropout = dropout
-        self.use_bias = use_bias
-        self.act = None
-        self.dropout_rate = dropout
-        self.dropout = nn.Dropout(dropout)
-
-        self.E_linear = nn.Linear(in_features, out_features, bias = False).to(torch.float64)
-
-        self.bias = nn.Parameter(torch.Tensor(out_features).to(torch.float64)) if use_bias else None
-        self.reset_parameters()
-
-    def reset_parameters(self):
-        # Use Xavier to init E_linear's weights
-        nn.init.xavier_uniform_(self.E_linear.weight, gain=nn.init.calculate_gain('relu'))
-        if self.E_linear.bias is not None:
-            nn.init.constant_(self.E_linear.bias, 0)
-
-    def forward(self, x):
-        # Apply dropout to the input
-        x = self.dropout(x)
-
-        #Note that expmap0/exp contains proj already!
-        res = self.manifold.expmap0(
-                self.E_linear(self.manifold.proj_tan0(
-                                self.manifold.logmap0(x, self.c),
-                                self.c)),
-                self.c)
-
-        #Note that expmap0/exp contains proj already!
-        if self.use_bias:
-            bias = self.manifold.proj_tan0(self.bias.view(1, -1), self.c)
-            res = self.manifold.proj(self.manifold.mobius_add(res, #then mobius addition
-                                    self.manifold.expmap0(bias, self.c), self.c), # a bias on manifold
-                                    self.c)
-        #print('how about here?')
-        return res
-
-    def extra_repr(self):
-        return 'in_features={}, out_features={}, c={}, use_bias={}, act={}, dropout_rate={}'.format(
-            self.in_features, self.out_features, self.c, self.use_bias, self.act, self.dropout_rate)
-#BLinear(manifold, in_features, out_features, c=c, dropout=0.5, act=nonlin, use_bias=True)
-
-
 class BAct(Module):
 
     def __init__(self, manifold, c, act):
@@ -288,11 +184,21 @@ class BAct(Module):
         self.act = act
 
     def forward(self, x):
-         #Note that expmap0/exp contains proj already!
+        #Note that expmap0/exp contains proj already!
         return self.manifold.expmap0(
                     self.manifold.proj_tan0(
-                        self.act(self.manifold.logmap0(x, c=self.c)), 
-                        c=self.c), c=self.c)
+                        self.act(self.manifold.logmap0(x, c=self.c)), c=self.c), c=self.c)
+
+        #Try a different one:
+        #target_tangent_points = self.manifold.proper_tangent_space(x, self.c)
+        #target_tangent_points = target_tangent_points.unsqueeze(-2).repeat(1,x.shape[-2],1)
+        #print(target_tangent_points.shape,x.shape)
+        #return self.manifold.expmap(
+                    #self.manifold.proj_tan(
+                    #self.act(self.manifold.logmap(target_tangent_points, x, self.c)), target_tangent_points,c=self.c), 
+                    #target_tangent_points,c=self.c)
+
+
 
     def extra_repr(self):
         return 'c={}, act={}'.format(
@@ -300,15 +206,19 @@ class BAct(Module):
         )
 
 
+# We wanna use it in neighbor aggregation via GIN idea
 class BMLP(nn.Module):
     def __init__(self, manifold, in_features, out_features, c, dropout, act, use_bias):
         super(BMLP, self).__init__()
-        self.linear = BLinear(manifold, in_features, out_features, c, dropout, act, use_bias)
+        self.linear1 = BLinear(manifold, in_features, out_features, c, dropout, act, use_bias)
+        #self.act = BAct(manifold, c, act)
+        self.linear2 = BLinear(manifold, out_features, out_features, c, dropout, None, use_bias)
 
-    def forward(self, input):
-        x, adj = input
-        h = self.linear.forward(x)
-        return h,adj
+    def forward(self, x_nei_transform):
+        #x_nei_transform: (n, nei_num, d')
+        h = self.linear1.forward(x_nei_transform)
+        #h = self.act(h)
+        return self.linear2.forward(h)
 
 
 """
@@ -327,8 +237,8 @@ class KernelPointAggregation(nn.Module):
     x_kernel,x_nei are poincare tensors; res is the Klein tensor
     """
     def __init__(self, kernel_size, in_channels, out_channels, KP_extent,
-                 manifold, use_bias, dropout, c, nonlin=None,
-                 aggregation_mode='sum',deformable=False,AggKlein=True,corr=0):
+                 manifold, use_bias, dropout, c, nonlin = None, aggregation_mode = 'sum',
+                 deformable = False, AggKlein = True, corr = 1, nei_agg = 2):
         super(KernelPointAggregation, self).__init__()
         # Save parameters
         self.manifold = manifold
@@ -337,26 +247,42 @@ class KernelPointAggregation(nn.Module):
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.KP_extent = KP_extent #This is the radius for generating kernels
-        #print(AggKlein)
-        self.AggKlein = AggKlein
-
         self.deformable = deformable
-        self.corr = corr
-        #print('corr=', self.corr)
 
+        #Newly added options
+        self.AggKlein = AggKlein
+        self.corr = corr
+        self.nei_agg = nei_agg
+
+        #This linear is for kernel point convolution (inner aggregation)
         if self.corr == 0 or self.corr ==1:
             #This is used for corr==0 or corr==1
             self.linears = nn.ModuleList([BLinear(manifold,in_channels,out_channels,
                                              self.c,dropout,nonlin,use_bias) 
                                             for _ in range(self.K)])
-        else:
+        elif self.corr == 2:
             #This is used for corr==2
-            self.single_linear = BLinear(manifold,in_channels,out_channels,self.c,dropout,nonlin,use_bias) 
+            self.single_linear = BLinear(manifold,in_channels,out_channels, self.c,dropout,nonlin,use_bias) 
+        else:
+            raise NotImplementedError("The specified correlation type is not implemented.")
 
-        self.act = BAct(manifold, self.c, nonlin)
+        if self.nei_agg == 0:
+            self.act = BAct(manifold, self.c, nonlin)
+        elif self.nei_agg == 1:
+            #Attention for neighbor aggregation
+            self.atten1 = BLinear(manifold, out_channels+out_channels, 1, self.c, dropout, nonlin=None, use_bias=True)
+            self.atten2 = BLinear(manifold, out_channels+out_channels, 1, self.c, dropout, nonlin=None, use_bias=True)
+            #This activation is for non-linearity for node-embedding(n,d''), which is after neibor aggregation
+            self.act = BAct(manifold, self.c, nonlin)
+        elif self.nei_agg == 2:
+            #GIN's perspective in terms of neighbor aggregation
+            self.MLP_f = BMLP(manifold, out_channels, 2*out_channels, self.c, dropout, nonlin, use_bias)
+            self.MLP_fi = BMLP(manifold, 2*out_channels, out_channels, self.c, dropout, nonlin, use_bias)
+        else:
+            raise NotImplementedError("The specified correlation type is not implemented.")
 
         """
-        # This part is not yet implemented
+        # This part is not yet implemented, I think no need to ??
         if deformable:
             pass
         """
@@ -392,22 +318,6 @@ class KernelPointAggregation(nn.Module):
 
         Returns:
         - res: Tensor of kernel positions.
-
-        Remark:
-        The result tensor is of the following shape:
-            [[[kp2_atx1)^T],
-              [(kp3_atx1)^T],
-              ...
-              [(kpK_atx1)^T],
-              [(kp1_atx1)^T]],
-            
-              ...Matrices...
-            
-             [[kp2_atxn)^T],
-              [(kp3_atxn)^T],
-              ...
-              [(kpK_atxn)^T],
-              [(kp1_atxn)^T]]
         """        
     
         n, d = x.shape
@@ -489,7 +399,7 @@ class KernelPointAggregation(nn.Module):
         - x_nei: A matrix that describes neighbor nodes' features (n,nei_num,d) 
 
         Returns:
-        - res: A tensor of shape (n,K,num_nei,d)
+        - res: A tensor of shape (n,K,num_nei,d')
 
         Notes:
         self.linears: A list containing K independent transformations to eapplied to every neighboring nodes
@@ -599,8 +509,11 @@ class KernelPointAggregation(nn.Module):
             nei_mask = nei_mask.repeat(1, 1, self.K).view(n, self.K, nei_num)
             x_nei_kernel_dis = x_nei_kernel_dis * nei_mask  # (n, k, nei_num)
 
+
         if self.corr == 2:
-            #The new proposed approach to ease computation
+            # The new proposed approach to ease computation
+            # I think this one is not important because it ignores kernel point convolution, just a linear layer to me
+            # So I don't have a "complete" implementation for this case, namely no GIN/attention neighbor aggregation
             if self.AggKlein == True:
                 klein_x_nei = self.manifold.poincare_to_klein(x_nei, self.c)#(n,nei_num,d)
                 klein_x_nei = self.manifold.klein_proj(klein_x_nei, self.c)#Numerical reasons
@@ -628,31 +541,115 @@ class KernelPointAggregation(nn.Module):
                 hyperboloid_x_final = self.manifold.hyperboloid_centroid(hyperboloid_x_nei_transform, self.c)#outer_agg#(n,d')# on hyperboloid
                 x_final = self.manifold.hyperboloid_to_poincare(hyperboloid_x_final, self.c)#(n,d')# in Poincare
                 x_final = self.manifold.proj(x_final, self.c) #Numerical reasons
+            
+            x_final = self.act.forward(x_final)
+            return self.manifold.proj(x_final, self.c)
 
-        else:
-            #Old ways like KPConv
+        elif self.corr ==0 or self.corr ==1:
+            #Old ways like KPConv, which is effective
             if self.AggKlein == True:
                 #print("Using Klein Midpoint for Aggregation")
                 klein_x_nei_transform = self.manifold.poincare_to_klein(x_nei_transform,c=self.c)#(n,K,nei_num,d')
                 klein_x_nei_transform = self.manifold.klein_proj(klein_x_nei_transform, self.c)#Numerical reasons
                 klein_x_nei_transform = self.avg_kernel(klein_x_nei_transform, x_nei_kernel_dis, self.AggKlein)#inner_agg#(n,nei_num,d') in Klein
-                #print(klein_x_nei_transform.shape)
-                klein_x_final = self.manifold.klein_midpoint(klein_x_nei_transform)#outer_agg#(n,d')# in Klein
-                #klein_x_final = self.manifold.klein_proj(klein_x_final, self.c)#Add this sentence gives nan!
-                x_final = self.manifold.klein_to_poincare(klein_x_final,c=self.c)#(n,d')# in Poincare
-                x_final = self.manifold.proj(x_final,c=self.c) #Numerical reasons
+                klein_x_nei_transform = self.manifold.klein_proj(klein_x_nei_transform, self.c)
+                #print(klein_x_nei_transform.shape) #(n,nei_num,d')
+
+                if self.nei_agg == 0:
+                    #######################Uniform neighbor Aggregation#######################
+                    klein_x_final = self.manifold.klein_midpoint(klein_x_nei_transform)#outer_agg#(n,d')# in Klein
+                    klein_x_final = self.manifold.klein_proj(klein_x_final, self.c)#Add this sentence gives nan!
+                    x_final = self.manifold.klein_to_poincare(klein_x_final,c=self.c)#(n,d')# in Poincare
+                    x_final = self.manifold.proj(x_final,c=self.c) #Numerical reasons
+                    #######################Uniform neighbor Aggregation#######################
+                    x_final = self.act.forward(x_final)
+                    return self.manifold.proj(x_final, self.c)
+
+                elif self.nei_agg == 1:
+                    #######################Attention Neighbor Aggregation#######################
+                    poincare_x_nei_transform = self.manifold.klein_to_poincare(klein_x_nei_transform, self.c) #(n,nei_num,d')
+                    poincare_x_nei_transform = self.manifold.proj(poincare_x_nei_transform,c=self.c)
+
+                    attention1 = F.softmax(self.atten1(torch.cat((poincare_x_nei_transform, torch.zeros_like(poincare_x_nei_transform)),dim=-1)
+                                                ).squeeze(-1),dim=-1) #attention(n,nei_num)
+                    attention2 = F.softmax(self.atten2(torch.cat((poincare_x_nei_transform, torch.zeros_like(poincare_x_nei_transform)),dim=-1)
+                                                ).squeeze(-1),dim=-1) #attention(n,nei_num)
+                    multihead_attention = (attention1+attention2)/2
+                    #print(attention.shape)
+                    klein_x_nei_transform = self.manifold.poincare_to_klein(poincare_x_nei_transform, self.c)
+                    klein_x_nei_transform = self.manifold.klein_proj(klein_x_nei_transform, self.c)#Numerical reasons
+                    klein_x_final = self.manifold.klein_midpoint(klein_x_nei_transform, multihead_attention)#outer_agg#(n,d')# in Klein
+                    klein_x_final = self.manifold.klein_proj(klein_x_final, self.c)#Add this sentence gives nan!
+                    x_final = self.manifold.klein_to_poincare(klein_x_final,c=self.c)#(n,d')# in Poincare
+                    x_final = self.manifold.proj(x_final,c=self.c) #Numerical reasons
+                    #######################Attention Neighbor Aggregation#######################
+                    x_final = self.act.forward(x_final)
+                    return self.manifold.proj(x_final, self.c)
+
+                elif self.nei_agg == 2:
+                    #######################GIN neighbor Aggregation perspective#######################
+                    poincare_x_nei_transform = self.manifold.klein_to_poincare(klein_x_nei_transform, self.c) #(n,nei_num,d')
+                    poincare_x_nei_transform = self.manifold.proj(poincare_x_nei_transform,c=self.c)
+                    klein_x_final = self.manifold.klein_proj(self.manifold.klein_midpoint(self.manifold.klein_proj(self.manifold.poincare_to_klein(self.manifold.proj(self.MLP_f(poincare_x_nei_transform), self.c), self.c),self.c)),self.c)
+                    x_final = self.manifold.proj(self.MLP_fi(self.manifold.proj(self.manifold.klein_to_poincare(klein_x_final, self.c), self.c)),c=self.c)
+                    #######################GIN neighbor Aggregation perspective#######################
+                    return x_final#In terms of GIN, no need to go through extra activation
+
+                else:
+                    raise NotImplementedError("The specified correlation type is not implemented.")
+
             else:
                 #print("Using Hyperboloid Centroid for Aggregation")
                 hyperboloid_x_nei_transform = self.manifold.poincare_to_hyperboloid(x_nei_transform,c=self.c)#(n,K,nei_num,d')
                 hyperboloid_x_nei_transform = self.manifold.hyperboloid_proj(hyperboloid_x_nei_transform, self.c) #Numerical reasons
-                hyperboloid_x_nei_transform = self.avg_kernel(hyperboloid_x_nei_transform, x_nei_kernel_dis, not self.AggKlein)#inner_agg#(n,nei_num,d') on hyperboloid
-                #print("After InngerAgg")
-                hyperboloid_x_final = self.manifold.hyperboloid_centroid(hyperboloid_x_nei_transform,c=self.c)#outer_agg#(n,d')# on hyperboloid
-                x_final = self.manifold.hyperboloid_to_poincare(hyperboloid_x_final,c=self.c)#(n,d')# in Poincare
-                x_final = self.manifold.proj(x_final,c=self.c) #Numerical reasons
+                hyperboloid_x_nei_transform = self.avg_kernel(hyperboloid_x_nei_transform, x_nei_kernel_dis, self.AggKlein)#inner_agg#(n,nei_num,d') on hyperboloid
+                hyperboloid_x_nei_transform = self.manifold.hyperboloid_proj(hyperboloid_x_nei_transform, self.c) #Numerical reasons
 
-        x_final = self.act.forward(x_final)
-        return self.manifold.proj(x_final, self.c)
+                if self.nei_agg == 0:
+                    #######################Uniform neighbor Aggregation#######################
+                    hyperboloid_x_final = self.manifold.hyperboloid_centroid(hyperboloid_x_nei_transform,c=self.c)#outer_agg#(n,d')# on hyperboloid
+                    hyperboloid_x_final = self.manifold.hyperboloid_proj(hyperboloid_x_final, self.c)
+                    x_final = self.manifold.hyperboloid_to_poincare(hyperboloid_x_final,c=self.c)#(n,d')# in Poincare
+                    x_final = self.manifold.proj(x_final,c=self.c) #Numerical reasons
+                    #######################Uniform neighbor Aggregation#######################
+                    x_final = self.act.forward(x_final)
+                    return self.manifold.proj(x_final, self.c)
+
+                elif self.nei_agg == 1:
+                    #######################Attention Neighbor Aggregation#######################
+                    poincare_x_nei_transform = self.manifold.hyperboloid_to_poincare(hyperboloid_x_nei_transform, self.c) #(n,nei_num,d')
+                    poincare_x_nei_transform = self.manifold.proj(poincare_x_nei_transform,c=self.c)
+
+                    attention1 = F.softmax(self.atten1(torch.cat((poincare_x_nei_transform, torch.zeros_like(poincare_x_nei_transform)),dim=-1)
+                                                ).squeeze(-1),dim=-1) #attention(n,nei_num)
+                    attention2 = F.softmax(self.atten2(torch.cat((poincare_x_nei_transform, torch.zeros_like(poincare_x_nei_transform)),dim=-1)
+                                                ).squeeze(-1),dim=-1) #attention(n,nei_num)
+                    multihead_attention = (attention1+attention2)/2
+                    #print(attention.shape)
+                    hyperboloid_x_nei_transform = self.manifold.poincare_to_hyperboloid(poincare_x_nei_transform, self.c)
+                    hyperboloid_x_nei_transform = self.manifold.hyperboloid_proj(hyperboloid_x_nei_transform, self.c)#Numerical reasons
+                    hyperboloid_x_final = self.manifold.hyperboloid_centroid(hyperboloid_x_nei_transform, attention)#outer_agg#(n,d')# on hyperboloid
+                    hyperboloid_x_final = self.manifold.hyperboloid_proj(hyperboloid_x_final, self.c)
+                    x_final = self.manifold.hyperboloid_to_poincare(hyperboloid_x_final, self.c)#(n,d')# in Poincare
+                    x_final = self.manifold.proj(x_final,c=self.c) #Numerical reasons
+                    #######################Attention Neighbor Aggregation#######################
+                    x_final = self.act.forward(x_final)
+                    return self.manifold.proj(x_final, self.c)
+
+                elif self.nei_agg == 2:
+                    #######################GIN neighbor Aggregation perspective#######################
+                    poincare_x_nei_transform = self.manifold.hyperboloid_to_poincare(hyperboloid_x_nei_transform, self.c) #(n,nei_num,d')
+                    poincare_x_nei_transform = self.manifold.proj(poincare_x_nei_transform,c=self.c)
+                    hyperboloid_x_final = self.manifold.hyperboloid_proj(self.manifold.hyperboloid_centroid(self.manifold.hyperboloid_proj(self.manifold.poincare_to_hyperboloid(self.manifold.proj(self.MLP_f(poincare_x_nei_transform), self.c), self.c),self.c),self.c),self.c)
+                    x_final = self.manifold.proj(self.MLP_fi(self.manifold.proj(self.manifold.hyperboloid_to_poincare(hyperboloid_x_final, self.c), self.c)),c=self.c)
+                    #######################GIN neighbor Aggregation perspective#######################
+                    return x_final #In terms of GIN, no need to go through extra activation
+
+                else:
+                    raise NotImplementedError("The specified correlation type is not implemented.")
+
+        else:
+            raise NotImplementedError("The specified correlation type is not implemented.")
 
 
 #This is a simple pack up of KPAgg
@@ -661,12 +658,14 @@ class KPGraphConvolution(nn.Module):
     Hyperbolic Kernel Point Convolution Layer.
     """
     def __init__(self, manifold, kernel_size, KP_extent, in_features, out_features, 
-                 use_bias, dropout, c, nonlin, deformable, AggKlein, corr):
+                 use_bias, dropout, c, nonlin, deformable, AggKlein, corr, nei_agg):
         super(KPGraphConvolution, self).__init__()
-        #print(AggKlein)
+        print("AggKlein ==", AggKlein)
+        print("corr ==", corr)
+        print("nei_agg ==", nei_agg)
         self.net = KernelPointAggregation(kernel_size, in_features, out_features, KP_extent, manifold, 
-                                          use_bias, dropout, c, nonlin, aggregation_mode = 'sum',
-                                          deformable = deformable, AggKlein = AggKlein, corr = corr)
+                                          use_bias, dropout, c, nonlin, aggregation_mode = 'sum',deformable = deformable,
+                                          AggKlein = AggKlein, corr = corr, nei_agg = nei_agg)
 
     def forward(self, input):
         x, nei, nei_mask = input

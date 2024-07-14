@@ -1,0 +1,63 @@
+INFO:root:Using: cuda:7
+INFO:root:Using seed 28.
+INFO:root:Dataset: texas
+INFO:root:Num classes: 5
+INFO:root:NCModel(
+  (manifold): Lorentz manifold
+  (encoder): HKPNet(
+    (manifold): Lorentz manifold
+    (linear_before): LorentzLinear(
+      (manifold): Lorentz manifold
+      (weight): Linear(in_features=1704, out_features=32, bias=True)
+      (dropout): Dropout(p=0.1, inplace=False)
+    )
+    (layers): Sequential(
+      (0): KPGraphConvolution(
+        (net): KernelPointAggregation(
+          (manifold): Lorentz manifold
+          (linears): ModuleList(
+            (0): LorentzLinear(
+              (manifold): Lorentz manifold
+              (weight): Linear(in_features=32, out_features=32, bias=True)
+              (dropout): Dropout(p=0.1, inplace=False)
+            )
+            (1): LorentzLinear(
+              (manifold): Lorentz manifold
+              (weight): Linear(in_features=32, out_features=32, bias=True)
+              (dropout): Dropout(p=0.1, inplace=False)
+            )
+            (2): LorentzLinear(
+              (manifold): Lorentz manifold
+              (weight): Linear(in_features=32, out_features=32, bias=True)
+              (dropout): Dropout(p=0.1, inplace=False)
+            )
+          )
+        )
+      )
+    )
+  )
+  (decoder): LorentzDecoder(
+    (manifold): Lorentz manifold
+  )
+)
+INFO:root:Total number of parameters: 57996.0
+INFO:root:Epoch: 0010 lr: [0.001, 0.001] train_loss: 1.696086 train_acc: 0.606557 train_f1: 0.606557 time: 0.0279s
+INFO:root:Epoch: 0010 val_loss: 1.499712 val_acc: 0.568182 val_f1: 0.568182
+INFO:root:Epoch: 0020 lr: [0.001, 0.001] train_loss: 1.537976 train_acc: 0.606557 train_f1: 0.606557 time: 0.0255s
+INFO:root:Epoch: 0020 val_loss: 1.370805 val_acc: 0.568182 val_f1: 0.568182
+INFO:root:Epoch: 0030 lr: [0.001, 0.001] train_loss: 1.425101 train_acc: 0.618852 train_f1: 0.618852 time: 0.0259s
+INFO:root:Epoch: 0030 val_loss: 1.302173 val_acc: 0.590909 val_f1: 0.590909
+INFO:root:Epoch: 0040 lr: [0.001, 0.001] train_loss: 1.313265 train_acc: 0.786885 train_f1: 0.786885 time: 0.0268s
+INFO:root:Epoch: 0040 val_loss: 1.234139 val_acc: 0.727273 val_f1: 0.727273
+INFO:root:Epoch: 0050 lr: [0.001, 0.001] train_loss: 1.204837 train_acc: 0.913934 train_f1: 0.913934 time: 0.0321s
+INFO:root:Epoch: 0050 val_loss: 1.160573 val_acc: 0.818182 val_f1: 0.818182
+INFO:root:Epoch: 0060 lr: [0.001, 0.001] train_loss: 1.135780 train_acc: 0.905738 train_f1: 0.905738 time: 0.0304s
+INFO:root:Epoch: 0060 val_loss: 1.095817 val_acc: 0.818182 val_f1: 0.818182
+INFO:root:Epoch: 0070 lr: [0.001, 0.001] train_loss: 1.104690 train_acc: 0.918033 train_f1: 0.918033 time: 0.0301s
+INFO:root:Epoch: 0070 val_loss: 1.052422 val_acc: 0.840909 val_f1: 0.840909
+INFO:root:Epoch: 0080 lr: [0.001, 0.001] train_loss: 1.091908 train_acc: 0.926230 train_f1: 0.926230 time: 0.0290s
+INFO:root:Epoch: 0080 val_loss: 1.049071 val_acc: 0.840909 val_f1: 0.840909
+INFO:root:Epoch: 0090 lr: [0.001, 0.001] train_loss: 1.084559 train_acc: 0.926230 train_f1: 0.926230 time: 0.0298s
+INFO:root:Epoch: 0090 val_loss: 1.042855 val_acc: 0.863636 val_f1: 0.863636
+INFO:root:Epoch: 0100 lr: [0.0005, 0.0005] train_loss: 1.073119 train_acc: 0.926230 train_f1: 0.926230 time: 0.0349s
+INFO:root:Epoch: 0100 val_loss: 1.039165 val_acc: 0.863636 val_f1: 0.863636

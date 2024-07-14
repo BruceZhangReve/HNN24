@@ -181,6 +181,7 @@ class LorentzLinear(nn.Module):
         self.scale = nn.Parameter(torch.ones(()) * math.log(scale), requires_grad=not fixscale)
 
     def forward(self, x):
+        #print(self.nonlin)
         if self.nonlin is not None:
             x = self.nonlin(x)
         x = self.weight(self.dropout(x))
@@ -435,6 +436,8 @@ class KernelPointAggregation(nn.Module):
         self.KP_influence = KP_influence
         self.aggregation_mode = aggregation_mode
         self.deformable = deformable
+
+        #print("deformable:",deformable)
         self.modulated = modulated
         
         # Running variable containing deformed KP distance to input points. (used in regularization loss)
@@ -445,6 +448,7 @@ class KernelPointAggregation(nn.Module):
         # Initialize weights
 #         self.weights = Parameter(torch.zeros((self.K, in_channels, out_channels), dtype=torch.float32),
 #                                  requires_grad=True)
+        #print("nonlin in LorentzeLinear:", nonlin)
         self.linears = nn.ModuleList([LorentzLinear(manifold, in_channels, out_channels, use_bias, dropout, nonlin=nonlin)
                                       for _ in range(self.K)])
 
@@ -495,6 +499,7 @@ class KernelPointAggregation(nn.Module):
             tmp = self.manifold.expmap(x_k, tmp) # expmap to manifold
             res = torch.concat((tmp, x.view(n, 1, d)), 1) # add fixed kernel (n, k, d)
         if self.deformable:
+            #print("deformable settings")
             offset = self.offset_conv(x, nei, nei_mask, sample, sample_num) # (n, (d - 1) * k + 1)
             # print(offset)
             offset = self.manifold.split(offset, self.K) # (n, k, d)
@@ -577,8 +582,10 @@ class KPGraphConvolution(nn.Module):
     Hyperbolic graph convolution layer.
     """
 
-    def __init__(self, manifold, kernel_size, KP_extent, radius, in_features, out_features, use_bias, dropout, nonlin=None, deformable = False):
+    def __init__(self, manifold, kernel_size, KP_extent, radius, in_features, out_features, use_bias, dropout, nonlin = None, deformable = False):
         super(KPGraphConvolution, self).__init__()
+        print("deformable:", deformable)
+        print("nonlin:", nonlin)
         self.net = KernelPointAggregation(kernel_size, in_features, out_features, KP_extent, radius, manifold, use_bias, dropout, nonlin=nonlin, deformable=deformable)
 
     def forward(self, input):

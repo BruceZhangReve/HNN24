@@ -108,10 +108,12 @@ class PoincareBall(Manifold):
         x_norm = x.norm(dim=-1, keepdim=True, p=2).clamp_min(self.min_norm)
         mx = x @ m.transpose(-1, -2)
         mx_norm = mx.norm(dim=-1, keepdim=True, p=2).clamp_min(self.min_norm)
-        res_c = tanh((mx_norm / x_norm * artanh((sqrt_c * x_norm).clamp(-self.max_artanh, self.max_artanh))).clamp(-self.max_tanh, self.max_tanh)) * mx / (mx_norm * sqrt_c)
-        cond = (mx == 0).prod(-1, keepdim=True, dtype=torch.uint8)
-        res_0 = torch.zeros(1, dtype=res_c.dtype, device=res_c.device)
-        res = torch.where(cond.bool(), res_c, res_0) #torch.where(cond, res_0, res_c)
+        artanh_arg = (sqrt_c * x_norm).clamp(-self.max_artanh, self.max_artanh)
+        tanh_arg = (mx_norm / x_norm * artanh(artanh_arg)).clamp(-self.max_tanh, self.max_tanh)
+        res_c = tanh(tanh_arg) * mx / (mx_norm * sqrt_c)
+        cond = (mx == 0).all(dim=-1, keepdim=True)
+        res_0 = torch.zeros_like(res_c)
+        res = torch.where(cond, res_0, res_c)
         return res
 
     def init_weights(self, w, c, irange=1e-5):
@@ -294,7 +296,7 @@ class PoincareBall(Manifold):
         w: (n,nei_num,K), the Poincare/Klein kernel_feature distance
         During outer aggregation: 
         x: (n,nei_num,d'), the Klein features
-        w: None (n,nei_num), the Poincare/Klein kernel_feature distance
+        w: None (n,nei_num), uniform 
 
         In terms of graph classification:
         x: (n,d') one graph from the batch, containing all nodes
@@ -347,3 +349,21 @@ class PoincareBall(Manifold):
         
         return upper / lower_expanded
         
+
+    def proper_tangent_space(self, x, c, max_norm=0.5):
+        """
+        x is a matrix (tensor) of shape (..., d), containing poincare vectors
+
+        res: (..., d), a location for a proper tangent space but slightly constrained
+        """
+        klein_points = self.klein_proj(self.poincare_to_klein(x, c), c)
+        target_klein_point = self.klein_proj(self.klein_midpoint(klein_points), c)
+        target_poincare_point = self.proj(self.klein_to_poincare(target_klein_point, c), c)
+        norm = torch.norm(target_poincare_point, dim=-1, keepdim=True)
+        norm = torch.clamp(norm, min=1e-5)
+        cond = norm > max_norm
+        projected = target_poincare_point / norm * max_norm
+        return torch.where(cond, projected, target_poincare_point) # no larger than max norm ring
+
+ 
+

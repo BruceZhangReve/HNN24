@@ -1,0 +1,51 @@
+INFO:root:Using: cuda:7
+INFO:root:Using seed 28.
+INFO:root:Dataset: texas
+INFO:root:Num classes: 5
+INFO:root:NCModel(
+  (manifold): Lorentz manifold
+  (encoder): HKPNet(
+    (manifold): Lorentz manifold
+    (linear_before): LorentzLinear(
+      (manifold): Lorentz manifold
+      (weight): Linear(in_features=1704, out_features=32, bias=True)
+      (dropout): Dropout(p=0.1, inplace=False)
+    )
+    (layers): Sequential(
+      (0): KPGraphConvolution(
+        (net): KernelPointAggregation(
+          (manifold): Lorentz manifold
+          (linears): ModuleList(
+            (0): LorentzLinear(
+              (manifold): Lorentz manifold
+              (weight): Linear(in_features=32, out_features=32, bias=True)
+              (dropout): Dropout(p=0.1, inplace=False)
+            )
+            (1): LorentzLinear(
+              (manifold): Lorentz manifold
+              (weight): Linear(in_features=32, out_features=32, bias=True)
+              (dropout): Dropout(p=0.1, inplace=False)
+            )
+            (2): LorentzLinear(
+              (manifold): Lorentz manifold
+              (weight): Linear(in_features=32, out_features=32, bias=True)
+              (dropout): Dropout(p=0.1, inplace=False)
+            )
+          )
+        )
+      )
+    )
+  )
+  (decoder): LorentzDecoder(
+    (manifold): Lorentz manifold
+  )
+)
+INFO:root:Total number of parameters: 57996.0
+INFO:root:Epoch: 0010 lr: [0.001, 0.001] train_loss: 1.641233 train_acc: 0.606557 train_f1: 0.606557 time: 0.0259s
+INFO:root:Epoch: 0010 val_loss: 1.518531 val_acc: 0.568182 val_f1: 0.568182
+INFO:root:Epoch: 0020 lr: [0.001, 0.001] train_loss: 1.434029 train_acc: 0.709016 train_f1: 0.709016 time: 0.0266s
+INFO:root:Epoch: 0020 val_loss: 1.363109 val_acc: 0.636364 val_f1: 0.636364
+INFO:root:Epoch: 0030 lr: [0.001, 0.001] train_loss: 1.281583 train_acc: 0.852459 train_f1: 0.852459 time: 0.0277s
+INFO:root:Epoch: 0030 val_loss: 1.245497 val_acc: 0.795455 val_f1: 0.795455
+INFO:root:Epoch: 0040 lr: [0.001, 0.001] train_loss: 1.184988 train_acc: 0.893443 train_f1: 0.893443 time: 0.0295s
+INFO:root:Epoch: 0040 val_loss: 1.187562 val_acc: 0.772727 val_f1: 0.772727

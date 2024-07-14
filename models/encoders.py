@@ -83,9 +83,13 @@ class HKPNet(Encoder):
             c_in, c_out = self.curvatures[i], self.curvatures[i + 1]
             in_dim, out_dim = dims[i], dims[i + 1]
             act = acts[i]
+            #print(act)
             hgc_layers.append(
+                    #hyp_layers.KPGraphConvolution(
+                            #self.manifold, args.kernel_size, args.KP_extent, args.radius, in_dim, out_dim, args.bias, args.dropout, nonlin=act if i != 0 else None, deformable = args.deformable
+                    #)
                     hyp_layers.KPGraphConvolution(
-                            self.manifold, args.kernel_size, args.KP_extent, args.radius, in_dim, out_dim, args.bias, args.dropout, nonlin=act if i != 0 else None, deformable = args.deformable
+                            self.manifold, args.kernel_size, args.KP_extent, args.radius, in_dim, out_dim, args.bias, args.dropout, nonlin=act, deformable = args.deformable
                     )
             )
         self.layers = nn.Sequential(*hgc_layers)
@@ -95,7 +99,8 @@ class HKPNet(Encoder):
     def encode(self, x, adj):
         if self.before:
             x = self.linear_before(x)
-            
+        
+        #print("Using this")
         # x_tan = self.manifold.proj_tan0(x, self.curvatures[0])
         # x_hyp = self.manifold.expmap0(x_tan, c=self.curvatures[0])
         # x_hyp = self.manifold.proj(x_hyp, c=self.curvatures[0])
@@ -325,6 +330,9 @@ class LorentzShallow(Encoder):
         return super(LorentzShallow, self).encode(h, adj)
 
 ############################NEWLY_ADDED############################
+
+#This one is no longer runnable I think
+
 class BMLP(Encoder):
     def __init__(self, c, args):
         super(BMLP, self).__init__(c) #Then we have self.c on cuda as initialized by Encoder class
@@ -358,6 +366,7 @@ class BMLP(Encoder):
         x_hyp = self.manifold.proj(x_hyp, c=self.c)
         return super(BMLP, self).encode(x_hyp, adj)
 
+
 class BKNet(Encoder):
     """
     BKNet.
@@ -374,8 +383,10 @@ class BKNet(Encoder):
         if args.linear_before != None:
             self.before = True
             args.linear_before = int(args.linear_before)
+            #self.linear_before = B_layers.BMLP(self.manifold, dims[0], args.linear_before, self.c,
+                                                #args.dropout, acts[0], args.bias)
             self.linear_before = B_layers.BLinear(self.manifold, dims[0], args.linear_before, self.c,
-                                                     args.dropout, acts[0], args.bias)
+                                                     args.dropout, nonlin=None, use_bias=True)
             #self.linear_before = B_layers.BLinear(self.manifold, dims[0], args.linear_before, self.c,
                                                   #args.dropout, None, min(args.bias,0),False) # Means non-trainable
             dims[0] = args.linear_before
@@ -393,7 +404,7 @@ class BKNet(Encoder):
                 #Need to ensure things works if act==None!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                     B_layers.KPGraphConvolution(
                             self.manifold, args.kernel_size, args.KP_extent, in_dim, out_dim, args.bias,
-                            args.dropout, self.curvatures[i], act, args.deformable, args.AggKlein, args.corr
+                            args.dropout, self.curvatures[i], act, args.deformable, args.AggKlein, args.corr, args.nei_agg
                     )
             )
         self.layers = nn.Sequential(*hgc_layers)
@@ -407,7 +418,7 @@ class BKNet(Encoder):
         x=x.to(torch.float64)##This is an ugly fix here also didn't work as well
         x_tan = self.manifold.proj_tan0(x, self.c)
         x_hyp = self.manifold.expmap0(x_tan, c=self.c)
-        x_hyp = self.manifold.proj(x_hyp, c=self.c)
+        #x_hyp = self.manifold.proj(x_hyp, c=self.c) # a proj is contained in exp0
 
         if self.before:
             x_hyp = self.linear_before(x_hyp)

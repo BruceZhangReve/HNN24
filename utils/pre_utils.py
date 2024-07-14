@@ -91,6 +91,8 @@ def get_activation(args):
         return nn.PReLU()
     elif args.activation == 'selu':
         return nn.SELU()
+    elif args.activation == 'sigmoid':
+        return torch.sigmoid()
 
 def init_weight(weight, method):
     """

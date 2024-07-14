@@ -93,10 +93,11 @@ class NCModel(BaseModel):
             correct = output.gather(1, data['labels'][idx].to(torch.long).unsqueeze(-1))
             loss = F.relu(self.margin - correct + output).mean()
         elif self.manifold_name == 'PoincareBall':
+            #Margin Loss
             #correct = output.gather(1, data['labels'][idx].to(torch.long).unsqueeze(-1))
             #loss = F.relu(self.margin - correct + output).mean()
+            #CE Loss
             loss = F.cross_entropy(output, data['labels'][idx].to(torch.long), self.weights.to(output.dtype))
-            #I think CE loss works better than Margin Loss
         else:
             loss = F.cross_entropy(output, data['labels'][idx], self.weights)
             #loss = F.cross_entropy(output, data['labels'][idx].to(torch.long), self.weights.to(torch.float64))
@@ -197,6 +198,7 @@ class GCModel(BaseModel):
             #print(output.shape)
             #print(torch.tensor(labels))
             loss = F.nll_loss(output, labels, self.weights)
+            #loss = F.cross_entropy(output, labels, self.weights)
             acc, f1 = acc_f1(output, labels, average=self.f1_average)
             if type == 1:
                 metrics = {'loss': loss, 'acc': acc, 'f1': f1}

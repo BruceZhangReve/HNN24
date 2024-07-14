@@ -1,0 +1,32 @@
+INFO:root:Using: cuda:7
+INFO:root:Using seed 25.
+INFO:root:Dataset: texas
+INFO:root:Num classes: 5
+INFO:root:NCModel(
+  (encoder): BKNet(
+    (linear_before): BLinear(in_features=1703, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=True, act=None)
+    (layers): Sequential(
+      (0): KPGraphConvolution(
+        (net): KernelPointAggregation(
+          (linears): ModuleList(
+            (0): BLinear(in_features=32, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=1, act=None)
+            (1): BLinear(in_features=32, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=1, act=None)
+            (2): BLinear(in_features=32, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=1, act=None)
+            (3): BLinear(in_features=32, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=1, act=None)
+          )
+          (act): BAct(c=tensor([1.], device='cuda:7'), act=<function relu at 0x7f295dea76d0>)
+        )
+      )
+    )
+  )
+  (decoder): PoincareDecoder()
+)
+INFO:root:Total number of parameters: 59077
+INFO:root:Epoch: 0010 lr: [0.001, 0.001] train_loss: 1.387589 train_acc: 0.618852 train_f1: 0.618852 time: 0.0544s
+INFO:root:Epoch: 0010 val_loss: 1.388156 val_acc: 0.590909 val_f1: 0.590909
+INFO:root:Epoch: 0020 lr: [0.001, 0.001] train_loss: 1.224875 train_acc: 0.618852 train_f1: 0.618852 time: 0.0587s
+INFO:root:Epoch: 0020 val_loss: 1.251120 val_acc: 0.590909 val_f1: 0.590909
+INFO:root:Epoch: 0030 lr: [0.001, 0.001] train_loss: 1.113333 train_acc: 0.618852 train_f1: 0.618852 time: 0.0551s
+INFO:root:Epoch: 0030 val_loss: 1.155303 val_acc: 0.590909 val_f1: 0.590909
+INFO:root:Epoch: 0040 lr: [0.001, 0.001] train_loss: 1.049657 train_acc: 0.618852 train_f1: 0.618852 time: 0.0548s
+INFO:root:Epoch: 0040 val_loss: 1.103730 val_acc: 0.590909 val_f1: 0.590909

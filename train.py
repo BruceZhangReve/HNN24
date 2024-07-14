@@ -30,8 +30,10 @@ torch.cuda.empty_cache()
 def train(args):
     #choose which manifold class to follow 
     if args.use_geoopt == False:
+        print("base_ManifoldParameter")
         ManifoldParameter = base_ManifoldParameter
     else:
+        print("geoopt_ManifoldParameter")
         ManifoldParameter = geoopt_ManifoldParameter
 
     np.random.seed(args.seed)
@@ -342,6 +344,7 @@ def train(args):
             model.train()
             optimizer.zero_grad()
             if args.model == 'HKPNet':
+                #print('HKPNet')
                 embeddings = model.encode(data['features'], (nei, nei_mask))
                 # print(embeddings.isnan().sum())
             elif args.model == 'BKNet':
@@ -349,6 +352,7 @@ def train(args):
                 embeddings = model.encode(data['features'], (nei, nei_mask))#if correctly, embeddings on cuda as well
             else:
                 embeddings = model.encode(data['features'], data['adj_train_norm'])
+            #print("model.AggKlein:", model.encoder.layers[0].net.AggKlein)
             train_metrics = model.compute_metrics(embeddings, data, 'train')
             train_metrics['loss'].backward()
             if args.grad_clip is not None:
@@ -424,4 +428,5 @@ def train(args):
 
 if __name__ == '__main__':
     args = parser.parse_args()
+    #print(args)
     train(args)
