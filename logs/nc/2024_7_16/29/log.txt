@@ -1,0 +1,57 @@
+INFO:root:Using: cuda:7
+INFO:root:Using seed 8.
+INFO:root:Dataset: chameleon
+INFO:root:Num classes: 5
+INFO:root:NCModel(
+  (encoder): BKNet(
+    (linear_before): BLinear(in_features=2325, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=True, act=None)
+    (layers): Sequential(
+      (0): KPGraphConvolution(
+        (net): KernelPointAggregation(
+          (linears): ModuleList(
+            (0): BLinear(in_features=32, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=1, act=None)
+            (1): BLinear(in_features=32, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=1, act=None)
+          )
+          (MLP_f): BMLP(
+            (linear1): BLinear(in_features=32, out_features=64, c=tensor([1.], device='cuda:7'), use_bias=1, act=<function relu at 0x7f28fcfdb6d0>)
+            (linear2): BLinear(in_features=64, out_features=64, c=tensor([1.], device='cuda:7'), use_bias=1, act=None)
+          )
+          (MLP_fi): BMLP(
+            (linear1): BLinear(in_features=64, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=1, act=<function relu at 0x7f28fcfdb6d0>)
+            (linear2): BLinear(in_features=32, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=1, act=None)
+          )
+        )
+      )
+      (1): KPGraphConvolution(
+        (net): KernelPointAggregation(
+          (linears): ModuleList(
+            (0): BLinear(in_features=32, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=1, act=None)
+            (1): BLinear(in_features=32, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=1, act=None)
+          )
+          (MLP_f): BMLP(
+            (linear1): BLinear(in_features=32, out_features=64, c=tensor([1.], device='cuda:7'), use_bias=1, act=<function relu at 0x7f28fcfdb6d0>)
+            (linear2): BLinear(in_features=64, out_features=64, c=tensor([1.], device='cuda:7'), use_bias=1, act=None)
+          )
+          (MLP_fi): BMLP(
+            (linear1): BLinear(in_features=64, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=1, act=<function relu at 0x7f28fcfdb6d0>)
+            (linear2): BLinear(in_features=32, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=1, act=None)
+          )
+        )
+      )
+    )
+  )
+  (decoder): PoincareDecoder()
+)
+INFO:root:Total number of parameters: 97797
+INFO:root:Epoch: 0010 lr: [0.001, 0.001] train_loss: 1.577472 train_acc: 0.239984 train_f1: 0.239984 time: 0.6418s
+INFO:root:Epoch: 0010 val_loss: 1.545112 val_acc: 0.304029 val_f1: 0.304029
+INFO:root:Epoch: 0020 lr: [0.001, 0.001] train_loss: 1.573876 train_acc: 0.282011 train_f1: 0.282011 time: 0.6234s
+INFO:root:Epoch: 0020 val_loss: 1.541659 val_acc: 0.304029 val_f1: 0.304029
+INFO:root:Epoch: 0030 lr: [0.001, 0.001] train_loss: 1.564431 train_acc: 0.282011 train_f1: 0.282011 time: 0.6250s
+INFO:root:Epoch: 0030 val_loss: 1.542780 val_acc: 0.304029 val_f1: 0.304029
+INFO:root:Epoch: 0040 lr: [0.001, 0.001] train_loss: 1.567532 train_acc: 0.285939 train_f1: 0.285939 time: 0.6229s
+INFO:root:Epoch: 0040 val_loss: 1.545427 val_acc: 0.304029 val_f1: 0.304029
+INFO:root:Epoch: 0050 lr: [0.001, 0.001] train_loss: 1.559441 train_acc: 0.265907 train_f1: 0.265907 time: 0.6188s
+INFO:root:Epoch: 0050 val_loss: 1.542743 val_acc: 0.304029 val_f1: 0.304029
+INFO:root:Epoch: 0060 lr: [0.001, 0.001] train_loss: 1.562329 train_acc: 0.290259 train_f1: 0.290259 time: 0.6200s
+INFO:root:Epoch: 0060 val_loss: 1.543464 val_acc: 0.304029 val_f1: 0.304029

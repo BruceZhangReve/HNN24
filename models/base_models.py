@@ -89,9 +89,12 @@ class NCModel(BaseModel):
         output = self.decode(embeddings, data['adj_train_norm'], idx)
         # print(data['labels'][idx].shape, data['labels'].shape)
         if self.manifold_name == 'Lorentz':
+            #Margin Loss
             #correct = output.gather(1, data['labels'][idx].unsqueeze(-1))
             correct = output.gather(1, data['labels'][idx].to(torch.long).unsqueeze(-1))
             loss = F.relu(self.margin - correct + output).mean()
+            #CE Loss
+            #loss = F.cross_entropy(output, data['labels'][idx].to(torch.long), self.weights.to(output.dtype))
         elif self.manifold_name == 'PoincareBall':
             #Margin Loss
             #correct = output.gather(1, data['labels'][idx].to(torch.long).unsqueeze(-1))

@@ -89,7 +89,7 @@ class HKPNet(Encoder):
                             #self.manifold, args.kernel_size, args.KP_extent, args.radius, in_dim, out_dim, args.bias, args.dropout, nonlin=act if i != 0 else None, deformable = args.deformable
                     #)
                     hyp_layers.KPGraphConvolution(
-                            self.manifold, args.kernel_size, args.KP_extent, args.radius, in_dim, out_dim, args.bias, args.dropout, nonlin=act, deformable = args.deformable
+                            self.manifold, args.kernel_size, args.KP_extent, args.radius, in_dim, out_dim, args.bias, args.dropout, nonlin=act, deformable = args.deformable, corr = args.corr, nei_agg = args.nei_agg
                     )
             )
         self.layers = nn.Sequential(*hgc_layers)

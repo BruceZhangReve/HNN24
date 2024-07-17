@@ -1,0 +1,169 @@
+INFO:root:Using: cuda:7
+INFO:root:Using seed 42.
+INFO:root:Dataset: wisconsin
+INFO:root:Num classes: 5
+INFO:root:NCModel(
+  (manifold): Lorentz manifold
+  (encoder): HKPNet(
+    (manifold): Lorentz manifold
+    (linear_before): LorentzLinear(
+      (manifold): Lorentz manifold
+      (weight): Linear(in_features=1704, out_features=32, bias=True)
+      (dropout): Dropout(p=0.2, inplace=False)
+    )
+    (layers): Sequential(
+      (0): KPGraphConvolution(
+        (net): KernelPointAggregation(
+          (manifold): Lorentz manifold
+          (linears): ModuleList(
+            (0): LorentzLinear(
+              (manifold): Lorentz manifold
+              (weight): Linear(in_features=32, out_features=32, bias=True)
+              (dropout): Dropout(p=0.2, inplace=False)
+            )
+            (1): LorentzLinear(
+              (manifold): Lorentz manifold
+              (weight): Linear(in_features=32, out_features=32, bias=True)
+              (dropout): Dropout(p=0.2, inplace=False)
+            )
+            (2): LorentzLinear(
+              (manifold): Lorentz manifold
+              (weight): Linear(in_features=32, out_features=32, bias=True)
+              (dropout): Dropout(p=0.2, inplace=False)
+            )
+            (3): LorentzLinear(
+              (manifold): Lorentz manifold
+              (weight): Linear(in_features=32, out_features=32, bias=True)
+              (dropout): Dropout(p=0.2, inplace=False)
+            )
+          )
+          (MLP_f): LMLP(
+            (linear1): LorentzLinear(
+              (manifold): Lorentz manifold
+              (weight): Linear(in_features=32, out_features=64, bias=True)
+              (dropout): Dropout(p=0.2, inplace=False)
+            )
+            (linear2): LorentzLinear(
+              (manifold): Lorentz manifold
+              (weight): Linear(in_features=64, out_features=64, bias=True)
+              (dropout): Dropout(p=0.2, inplace=False)
+            )
+          )
+          (MLP_fi): LMLP(
+            (linear1): LorentzLinear(
+              (manifold): Lorentz manifold
+              (weight): Linear(in_features=64, out_features=32, bias=True)
+              (dropout): Dropout(p=0.2, inplace=False)
+            )
+            (linear2): LorentzLinear(
+              (manifold): Lorentz manifold
+              (weight): Linear(in_features=32, out_features=32, bias=True)
+              (dropout): Dropout(p=0.2, inplace=False)
+            )
+          )
+        )
+      )
+      (1): KPGraphConvolution(
+        (net): KernelPointAggregation(
+          (manifold): Lorentz manifold
+          (linears): ModuleList(
+            (0): LorentzLinear(
+              (manifold): Lorentz manifold
+              (weight): Linear(in_features=32, out_features=32, bias=True)
+              (dropout): Dropout(p=0.2, inplace=False)
+            )
+            (1): LorentzLinear(
+              (manifold): Lorentz manifold
+              (weight): Linear(in_features=32, out_features=32, bias=True)
+              (dropout): Dropout(p=0.2, inplace=False)
+            )
+            (2): LorentzLinear(
+              (manifold): Lorentz manifold
+              (weight): Linear(in_features=32, out_features=32, bias=True)
+              (dropout): Dropout(p=0.2, inplace=False)
+            )
+            (3): LorentzLinear(
+              (manifold): Lorentz manifold
+              (weight): Linear(in_features=32, out_features=32, bias=True)
+              (dropout): Dropout(p=0.2, inplace=False)
+            )
+          )
+          (MLP_f): LMLP(
+            (linear1): LorentzLinear(
+              (manifold): Lorentz manifold
+              (weight): Linear(in_features=32, out_features=64, bias=True)
+              (dropout): Dropout(p=0.2, inplace=False)
+            )
+            (linear2): LorentzLinear(
+              (manifold): Lorentz manifold
+              (weight): Linear(in_features=64, out_features=64, bias=True)
+              (dropout): Dropout(p=0.2, inplace=False)
+            )
+          )
+          (MLP_fi): LMLP(
+            (linear1): LorentzLinear(
+              (manifold): Lorentz manifold
+              (weight): Linear(in_features=64, out_features=32, bias=True)
+              (dropout): Dropout(p=0.2, inplace=False)
+            )
+            (linear2): LorentzLinear(
+              (manifold): Lorentz manifold
+              (weight): Linear(in_features=32, out_features=32, bias=True)
+              (dropout): Dropout(p=0.2, inplace=False)
+            )
+          )
+        )
+      )
+    )
+  )
+  (decoder): LorentzDecoder(
+    (manifold): Lorentz manifold
+  )
+)
+INFO:root:Total number of parameters: 82265.0
+INFO:root:Epoch: 0010 lr: [0.001, 0.001] train_loss: 1.317865 train_acc: 0.528662 train_f1: 0.528662 time: 0.0914s
+INFO:root:Epoch: 0010 val_loss: 1.195590 val_acc: 0.574074 val_f1: 0.574074
+INFO:root:Epoch: 0020 lr: [0.001, 0.001] train_loss: 1.234522 train_acc: 0.538217 train_f1: 0.538217 time: 0.0854s
+INFO:root:Epoch: 0020 val_loss: 1.122390 val_acc: 0.574074 val_f1: 0.574074
+INFO:root:Epoch: 0030 lr: [0.001, 0.001] train_loss: 1.239839 train_acc: 0.538217 train_f1: 0.538217 time: 0.0873s
+INFO:root:Epoch: 0030 val_loss: 1.119298 val_acc: 0.574074 val_f1: 0.574074
+INFO:root:Epoch: 0040 lr: [0.001, 0.001] train_loss: 1.222680 train_acc: 0.538217 train_f1: 0.538217 time: 0.0840s
+INFO:root:Epoch: 0040 val_loss: 1.114783 val_acc: 0.574074 val_f1: 0.574074
+INFO:root:Epoch: 0050 lr: [0.001, 0.001] train_loss: 1.229197 train_acc: 0.538217 train_f1: 0.538217 time: 0.0819s
+INFO:root:Epoch: 0050 val_loss: 1.133220 val_acc: 0.574074 val_f1: 0.574074
+INFO:root:Epoch: 0060 lr: [0.001, 0.001] train_loss: 1.242523 train_acc: 0.538217 train_f1: 0.538217 time: 0.0867s
+INFO:root:Epoch: 0060 val_loss: 1.125434 val_acc: 0.574074 val_f1: 0.574074
+INFO:root:Epoch: 0070 lr: [0.001, 0.001] train_loss: 1.223210 train_acc: 0.538217 train_f1: 0.538217 time: 0.0846s
+INFO:root:Epoch: 0070 val_loss: 1.128428 val_acc: 0.574074 val_f1: 0.574074
+INFO:root:Epoch: 0080 lr: [0.001, 0.001] train_loss: 1.221882 train_acc: 0.538217 train_f1: 0.538217 time: 0.0919s
+INFO:root:Epoch: 0080 val_loss: 1.127750 val_acc: 0.574074 val_f1: 0.574074
+INFO:root:Epoch: 0090 lr: [0.001, 0.001] train_loss: 1.208829 train_acc: 0.538217 train_f1: 0.538217 time: 0.0902s
+INFO:root:Epoch: 0090 val_loss: 1.130432 val_acc: 0.574074 val_f1: 0.574074
+INFO:root:Epoch: 0100 lr: [0.0005, 0.0005] train_loss: 1.218458 train_acc: 0.538217 train_f1: 0.538217 time: 0.0848s
+INFO:root:Epoch: 0100 val_loss: 1.127923 val_acc: 0.574074 val_f1: 0.574074
+INFO:root:Epoch: 0110 lr: [0.0005, 0.0005] train_loss: 1.219913 train_acc: 0.538217 train_f1: 0.538217 time: 0.0851s
+INFO:root:Epoch: 0110 val_loss: 1.126534 val_acc: 0.574074 val_f1: 0.574074
+INFO:root:Epoch: 0120 lr: [0.0005, 0.0005] train_loss: 1.217044 train_acc: 0.538217 train_f1: 0.538217 time: 0.0870s
+INFO:root:Epoch: 0120 val_loss: 1.130215 val_acc: 0.574074 val_f1: 0.574074
+INFO:root:Epoch: 0130 lr: [0.0005, 0.0005] train_loss: 1.211976 train_acc: 0.538217 train_f1: 0.538217 time: 0.0843s
+INFO:root:Epoch: 0130 val_loss: 1.128575 val_acc: 0.574074 val_f1: 0.574074
+INFO:root:Epoch: 0140 lr: [0.0005, 0.0005] train_loss: 1.199722 train_acc: 0.538217 train_f1: 0.538217 time: 0.0856s
+INFO:root:Epoch: 0140 val_loss: 1.125951 val_acc: 0.574074 val_f1: 0.574074
+INFO:root:Epoch: 0150 lr: [0.0005, 0.0005] train_loss: 1.216804 train_acc: 0.538217 train_f1: 0.538217 time: 0.0863s
+INFO:root:Epoch: 0150 val_loss: 1.127129 val_acc: 0.574074 val_f1: 0.574074
+INFO:root:Epoch: 0160 lr: [0.0005, 0.0005] train_loss: 1.213654 train_acc: 0.538217 train_f1: 0.538217 time: 0.0845s
+INFO:root:Epoch: 0160 val_loss: 1.126955 val_acc: 0.574074 val_f1: 0.574074
+INFO:root:Epoch: 0170 lr: [0.0005, 0.0005] train_loss: 1.189991 train_acc: 0.538217 train_f1: 0.538217 time: 0.0876s
+INFO:root:Epoch: 0170 val_loss: 1.124978 val_acc: 0.574074 val_f1: 0.574074
+INFO:root:Epoch: 0180 lr: [0.0005, 0.0005] train_loss: 1.207399 train_acc: 0.538217 train_f1: 0.538217 time: 0.0836s
+INFO:root:Epoch: 0180 val_loss: 1.122823 val_acc: 0.574074 val_f1: 0.574074
+INFO:root:Epoch: 0190 lr: [0.0005, 0.0005] train_loss: 1.170068 train_acc: 0.544586 train_f1: 0.544586 time: 0.0873s
+INFO:root:Epoch: 0190 val_loss: 1.113163 val_acc: 0.574074 val_f1: 0.574074
+INFO:root:Epoch: 0200 lr: [0.00025, 0.00025] train_loss: 1.140994 train_acc: 0.579618 train_f1: 0.579618 time: 0.0852s
+INFO:root:Epoch: 0200 val_loss: 1.087457 val_acc: 0.574074 val_f1: 0.574074
+INFO:root:Epoch: 0210 lr: [0.00025, 0.00025] train_loss: 1.143231 train_acc: 0.576433 train_f1: 0.576433 time: 0.0848s
+INFO:root:Epoch: 0210 val_loss: 1.084716 val_acc: 0.555556 val_f1: 0.555556
+INFO:root:Epoch: 0220 lr: [0.00025, 0.00025] train_loss: 1.119161 train_acc: 0.579618 train_f1: 0.579618 time: 0.0976s
+INFO:root:Epoch: 0220 val_loss: 1.088254 val_acc: 0.574074 val_f1: 0.574074
+INFO:root:Epoch: 0230 lr: [0.00025, 0.00025] train_loss: 1.128234 train_acc: 0.563694 train_f1: 0.563694 time: 0.0879s
+INFO:root:Epoch: 0230 val_loss: 1.089877 val_acc: 0.574074 val_f1: 0.574074

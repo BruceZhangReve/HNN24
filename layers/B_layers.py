@@ -167,6 +167,8 @@ class BLinear(nn.Module):
             xt = self.act(self.manifold.logmap0(res, c=self.c))
             xt = self.manifold.proj_tan0(xt, c=self.c)
             res = self.manifold.proj(self.manifold.expmap0(xt, c=self.c), c=self.c)
+            #res = self.manifold.proj(self.manifold.expmap0(self.manifold.proj_tan0(self.act(self.manifold.logmap0(res, c=self.c)), c=self.c), c=self.c), c=self.c)
+
 
         return res
 
@@ -216,9 +218,11 @@ class BMLP(nn.Module):
 
     def forward(self, x_nei_transform):
         #x_nei_transform: (n, nei_num, d')
-        h = self.linear1.forward(x_nei_transform)
+
+        #h = self.linear1.forward(x_nei_transform)
         #h = self.act(h)
-        return self.linear2.forward(h)
+        #return self.linear2.forward(h)
+        return self.linear2.forward(self.linear1.forward(x_nei_transform))
 
 
 """
@@ -246,7 +250,10 @@ class KernelPointAggregation(nn.Module):
         self.K = kernel_size
         self.in_channels = in_channels
         self.out_channels = out_channels
-        self.KP_extent = KP_extent #This is the radius for generating kernels
+
+        #KP_extent (radius for kernel points)
+        self.KP_extent = KP_extent
+
         self.deformable = deformable
 
         #Newly added options
@@ -258,7 +265,7 @@ class KernelPointAggregation(nn.Module):
         if self.corr == 0 or self.corr ==1:
             #This is used for corr==0 or corr==1
             self.linears = nn.ModuleList([BLinear(manifold,in_channels,out_channels,
-                                             self.c,dropout,nonlin,use_bias) 
+                                             self.c,dropout,None,use_bias) 
                                             for _ in range(self.K)])
         elif self.corr == 2:
             #This is used for corr==2
@@ -267,13 +274,14 @@ class KernelPointAggregation(nn.Module):
             raise NotImplementedError("The specified correlation type is not implemented.")
 
         if self.nei_agg == 0:
+            #pass
             self.act = BAct(manifold, self.c, nonlin)
         elif self.nei_agg == 1:
             #Attention for neighbor aggregation
             self.atten1 = BLinear(manifold, out_channels+out_channels, 1, self.c, dropout, nonlin=None, use_bias=True)
             self.atten2 = BLinear(manifold, out_channels+out_channels, 1, self.c, dropout, nonlin=None, use_bias=True)
             #This activation is for non-linearity for node-embedding(n,d''), which is after neibor aggregation
-            self.act = BAct(manifold, self.c, nonlin)
+            #self.act = BAct(manifold, self.c, nonlin)
         elif self.nei_agg == 2:
             #GIN's perspective in terms of neighbor aggregation
             self.MLP_f = BMLP(manifold, out_channels, 2*out_channels, self.c, dropout, nonlin, use_bias)
@@ -323,6 +331,8 @@ class KernelPointAggregation(nn.Module):
         n, d = x.shape
         if radius is None:
             radius = self.KP_extent
+            #radius = 0.3 + (0.6 * torch.sigmoid(self.KP_extent)) #Make sure it lies in range (0.3-0.9)
+            #print("radius:", radius)
 
         K = self.kernel_tangents.shape[0]  # Kernel size
 
@@ -564,6 +574,7 @@ class KernelPointAggregation(nn.Module):
                     #######################Uniform neighbor Aggregation#######################
                     x_final = self.act.forward(x_final)
                     return self.manifold.proj(x_final, self.c)
+                    #return x_final
 
                 elif self.nei_agg == 1:
                     #######################Attention Neighbor Aggregation#######################
@@ -614,6 +625,7 @@ class KernelPointAggregation(nn.Module):
                     #######################Uniform neighbor Aggregation#######################
                     x_final = self.act.forward(x_final)
                     return self.manifold.proj(x_final, self.c)
+                    #return x_final
 
                 elif self.nei_agg == 1:
                     #######################Attention Neighbor Aggregation#######################

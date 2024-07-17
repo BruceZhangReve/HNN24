@@ -1,0 +1,35 @@
+INFO:root:Using: cuda:7
+INFO:root:Using seed 20.
+INFO:root:Dataset: texas
+INFO:root:Num classes: 5
+INFO:root:NCModel(
+  (encoder): BKNet(
+    (linear_before): BLinear(in_features=1703, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=False, act=None)
+    (layers): Sequential(
+      (0): KPGraphConvolution(
+        (net): KernelPointAggregation(
+          (linears): ModuleList(
+            (0): BLinear(in_features=32, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=1, act=None)
+            (1): BLinear(in_features=32, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=1, act=None)
+            (2): BLinear(in_features=32, out_features=32, c=tensor([1.], device='cuda:7'), use_bias=1, act=None)
+          )
+          (act): BAct(c=tensor([1.], device='cuda:7'), act=<function relu at 0x7ff2545fb6d0>)
+        )
+      )
+    )
+  )
+  (decoder): PoincareDecoder()
+)
+INFO:root:Total number of parameters: 57957
+INFO:root:Epoch: 0010 lr: [0.001, 0.001] train_loss: 1.426219 train_acc: 0.610656 train_f1: 0.610656 time: 0.0550s
+INFO:root:Epoch: 0010 val_loss: 1.408305 val_acc: 0.613636 val_f1: 0.613636
+INFO:root:Epoch: 0020 lr: [0.001, 0.001] train_loss: 1.271717 train_acc: 0.610656 train_f1: 0.610656 time: 0.0539s
+INFO:root:Epoch: 0020 val_loss: 1.255522 val_acc: 0.613636 val_f1: 0.613636
+INFO:root:Epoch: 0030 lr: [0.001, 0.001] train_loss: 1.169093 train_acc: 0.610656 train_f1: 0.610656 time: 0.0493s
+INFO:root:Epoch: 0030 val_loss: 1.162072 val_acc: 0.613636 val_f1: 0.613636
+INFO:root:Epoch: 0040 lr: [0.001, 0.001] train_loss: 1.121119 train_acc: 0.610656 train_f1: 0.610656 time: 0.0481s
+INFO:root:Epoch: 0040 val_loss: 1.121231 val_acc: 0.613636 val_f1: 0.613636
+INFO:root:Epoch: 0050 lr: [0.001, 0.001] train_loss: 1.099960 train_acc: 0.610656 train_f1: 0.610656 time: 0.0476s
+INFO:root:Epoch: 0050 val_loss: 1.096447 val_acc: 0.613636 val_f1: 0.613636
+INFO:root:Epoch: 0060 lr: [0.001, 0.001] train_loss: 1.066483 train_acc: 0.610656 train_f1: 0.610656 time: 0.0480s
+INFO:root:Epoch: 0060 val_loss: 1.068729 val_acc: 0.613636 val_f1: 0.613636

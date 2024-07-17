@@ -202,6 +202,20 @@ class LorentzLinear(nn.Module):
         if self.bias:
             nn.init.constant_(self.weight.bias, 0)
 
+# We wanna use it in neighbor aggregation via GIN idea
+#LorentzLinear(manifold, out_channels+out_channels, 1, use_bias, dropout, nonlin=None)
+class LMLP(nn.Module):
+    def __init__(self, manifold, in_features, out_features, use_bias, dropout, nonlin):
+        super(LMLP, self).__init__()
+        self.linear1 = LorentzLinear(manifold, in_features, out_features, use_bias, dropout, nonlin = nonlin)
+
+        self.linear2 = LorentzLinear(manifold, out_features, out_features, use_bias, dropout, nonlin = None)
+
+    def forward(self, x_nei_transform):
+        #x_nei_transform: (n, nei_num, d')
+        h = self.linear1.forward(x_nei_transform)
+        return self.linear2.forward(h)
+
 
 class LorentzAgg(Module):
     """
@@ -423,7 +437,7 @@ class KernelPointAggregation(nn.Module):
     def __init__(self, kernel_size, in_channels, out_channels, KP_extent, radius,
                  manifold, use_bias, dropout, nonlin=None,
                  fixed_kernel_points='center', KP_influence='linear', aggregation_mode='sum',
-                 deformable=False, modulated=False):
+                 deformable=False, corr = 0, nei_agg = 0, modulated=False):
         super(KernelPointAggregation, self).__init__()
         # Save parameters
         self.manifold = manifold
@@ -439,6 +453,10 @@ class KernelPointAggregation(nn.Module):
 
         #print("deformable:",deformable)
         self.modulated = modulated
+
+        #Newly added options
+        self.corr = corr
+        self.nei_agg = nei_agg
         
         # Running variable containing deformed KP distance to input points. (used in regularization loss)
         self.min_d2 = None
@@ -451,6 +469,21 @@ class KernelPointAggregation(nn.Module):
         #print("nonlin in LorentzeLinear:", nonlin)
         self.linears = nn.ModuleList([LorentzLinear(manifold, in_channels, out_channels, use_bias, dropout, nonlin=nonlin)
                                       for _ in range(self.K)])
+
+        if self.nei_agg == 0:
+            pass
+        elif self.nei_agg == 1:
+            #Attention for neighbor aggregation
+            #(manifold,in_features,out_features,bias=True,dropout=0.1,scale=10,fixscale=False,nonlin=None)
+            self.atten1 = LorentzLinear(manifold, out_channels+out_channels, 1, use_bias, dropout, nonlin=None)
+            self.atten2 = LorentzLinear(manifold, out_channels+out_channels, 1, use_bias, dropout, nonlin=None)
+        elif self.nei_agg == 2:
+            #GIN's perspective in terms of neighbor aggregation
+            self.MLP_f = LMLP(manifold, out_channels, 2*out_channels, use_bias, dropout, nonlin = nonlin)
+            self.MLP_fi = LMLP(manifold, 2*out_channels, out_channels, use_bias, dropout, nonlin = None)
+        else:
+            raise NotImplementedError("The specified correlation type is not implemented.")
+
 
         # Initiate weights for offsets
         if deformable:
@@ -513,14 +546,23 @@ class KernelPointAggregation(nn.Module):
         return res
     
     def get_nei_kernel_dis(self, x_kernel, x_nei):
-        n, nei_num, d = x_nei.shape
-
-        # x_nei_k = x_nei.repeat(1, 1, 1, self.K).view(n, nei_num, self.K, d) # (n, nei_num, k, d)
-        # x_nei_k = x_nei_k.swapaxes(1, 2) # (n, k, nei_num, d)
-        # x_kernel_nei = x_kernel.repeat(1, 1, 1, nei_num).view(n, self.K, nei_num, d) # (n, k, nei_num, d)
-        # return self.manifold.dist(x_nei_k, x_kernel_nei) # (n, k, nei_num)
-
-        return self.manifold.dist(x_nei.repeat(1, 1, 1, self.K).view(n, nei_num, self.K, d).swapaxes(1, 2), x_kernel.repeat(1, 1, 1, nei_num).view(n, self.K, nei_num, d))
+        #print("x_nei.shape:", x_nei.shape)
+        if x_nei.dim() == 3:
+            #corr==0
+            n, nei_num, d = x_nei.shape
+            # x_nei_k = x_nei.repeat(1, 1, 1, self.K).view(n, nei_num, self.K, d) # (n, nei_num, k, d)
+            # x_nei_k = x_nei_k.swapaxes(1, 2) # (n, k, nei_num, d)
+            # x_kernel_nei = x_kernel.repeat(1, 1, 1, nei_num).view(n, self.K, nei_num, d) # (n, k, nei_num, d)
+            # return self.manifold.dist(x_nei_k, x_kernel_nei) # (n, k, nei_num)
+            return self.manifold.dist(x_nei.repeat(1, 1, 1, self.K).view(n, nei_num, self.K, d).swapaxes(1, 2), x_kernel.repeat(1, 1, 1, nei_num).view(n, self.K, nei_num, d))
+        elif x_nei.dim() == 4:
+            #corr == 1
+            n, K, nei_num, d = x_nei.shape
+            kernel_points = x_kernel.repeat(1,1,1,nei_num).view(n,self.K,nei_num,d)#shape=[n,K,nei_num,d]
+            feature_points = x_nei #(n,K,nei_num,d)
+            return self.manifold.dist(feature_points, kernel_points)#shape=[n,K,nei_num] #Poincare distance
+        else:
+            raise ValueError("x_nei dimension incorrect!")
 
     def transport_x(self, x, x_nei):
         # x = x.repeat(1, 1, x_nei.shape[1]).view(x_nei.shape)
@@ -542,6 +584,7 @@ class KernelPointAggregation(nn.Module):
     def avg_kernel(self, x_nei_transform, x_nei_kernel_dis):
         x_nei_transform = x_nei_transform.swapaxes(1, 2) # (n, nei_num, k, d')
         x_nei_kernel_dis = x_nei_kernel_dis.swapaxes(1, 2).unsqueeze(3) # (n, nei_num, k)
+        #print(x_nei_transform.shape,x_nei_kernel_dis.swapaxes(2, 3).shape)
         return self.manifold.mid_point(x_nei_transform, x_nei_kernel_dis.swapaxes(2, 3)) # (n, nei_num, d')
 
     def sample_nei(self, nei, nei_mask, sample_num):
@@ -566,27 +609,73 @@ class KernelPointAggregation(nn.Module):
         
         x_nei = gather(x, nei) # (n, nei_num, d)
         if transp:
-            x, x_nei, x0 = self.transport_x(x, x_nei)
+            x, x_nei, x0 = self.transport_x(x, x_nei)   
         n, nei_num, d = x_nei.shape
-        x_kernel = self.get_kernel_pos(x, nei, nei_mask, sample, sample_num, transp) # (n, k, d)
-        x_nei_kernel_dis = self.get_nei_kernel_dis(x_kernel, x_nei) # (n, k, nei_num)
-        nei_mask = nei_mask.repeat(1, 1, self.K).view(n, self.K, nei_num) # (n, k, nei_num)
-        x_nei_kernel_dis = x_nei_kernel_dis * nei_mask
-        x_nei_transform = self.apply_kernel_transform(x_nei) # (n, k, nei_num, d')
+
+        #Eric might have made a mistake here let's see, we add a not here "transp = not transp"
+        x_kernel = self.get_kernel_pos(x, nei, nei_mask, sample, sample_num, transp = not transp) # (n, k, d)
+
+        if self.corr == 0:
+            #Use d(xi ominus x, xk)
+            x_nei_kernel_dis = self.get_nei_kernel_dis(x_kernel, x_nei) # (n, k, nei_num)
+            nei_mask = nei_mask.repeat(1, 1, self.K).view(n, self.K, nei_num) # (n, k, nei_num)
+            x_nei_kernel_dis = x_nei_kernel_dis * nei_mask
+            x_nei_transform = self.apply_kernel_transform(x_nei) # (n, k, nei_num, d')
+        elif self.corr == 1:
+            #print('corr == 1, Coming here') #Use d(xik, xk)
+            x_nei_transform = self.apply_kernel_transform(x_nei) # (n, k, nei_num, d')
+            if x_nei.shape[-1] != x_nei_transform.shape[-1]:
+                raise ValueError("Don't change dimension in linear transformation step if use corr==1")
+            x_nei_kernel_dis = self.get_nei_kernel_dis(x_kernel, x_nei_transform) # (n, k, nei_num)
+            nei_mask = nei_mask.repeat(1, 1, self.K).view(n, self.K, nei_num) # (n, k, nei_num)
+            x_nei_kernel_dis = x_nei_kernel_dis * nei_mask
+        else:
+            raise NotImplementedError("The specified correlation type is not implemented.")
+
         x_nei_transform = self.avg_kernel(x_nei_transform, x_nei_kernel_dis).squeeze(2) # (n, nei_num, d')
-        x_final = self.manifold.mid_point(x_nei_transform) # (n, d')
-        return x_final
+
+        if self.nei_agg == 0:
+            #######################Uniform neighbor Aggregation#######################
+            x_final = self.manifold.mid_point(x_nei_transform) # (n, d')
+            return x_final
+            #######################Uniform neighbor Aggregation#######################
+        elif self.nei_agg == 1:
+            #######################Attention Neighbor Aggregation#######################
+            #print("x_nei_transform.shape:", x_nei_transform.shape)
+            attention1 = F.softmax(self.atten1(torch.cat((x_nei_transform, torch.zeros_like(x_nei_transform)),dim=-1)
+                                                ).squeeze(-1),dim=-1) #attention(n,nei_num)
+            attention2 = F.softmax(self.atten2(torch.cat((x_nei_transform, torch.zeros_like(x_nei_transform)),dim=-1)
+                                                ).squeeze(-1),dim=-1) #attention(n,nei_num)
+            multihead_attention = ((attention1+attention2)/2).unsqueeze(2)
+
+            #print("multihead_attention.shape:", multihead_attention.swapaxes(1, 2).shape)
+            x_final = self.manifold.mid_point(x_nei_transform, multihead_attention.swapaxes(1, 2)).squeeze(1) # (n, d')
+            #print("x_final.shape:", x_final.shape)
+            return x_final
+            #######################Attention Neighbor Aggregation#######################
+        elif self.nei_agg == 2:
+            #######################GIN neighbor Aggregation perspective#######################
+            x_final = self.manifold.mid_point(self.MLP_f(x_nei_transform))
+            x_final = self.MLP_fi(x_final)
+            #print("x_final.shape:", x_final.shape)
+            return x_final
+            #######################GIN neighbor Aggregation perspective#######################
+        else:
+            raise NotImplementedError("The specified correlation type is not implemented.")
+
 
 class KPGraphConvolution(nn.Module):
     """
     Hyperbolic graph convolution layer.
     """
 
-    def __init__(self, manifold, kernel_size, KP_extent, radius, in_features, out_features, use_bias, dropout, nonlin = None, deformable = False):
+    def __init__(self, manifold, kernel_size, KP_extent, radius, in_features, out_features, use_bias, dropout, nonlin = None, deformable = False, corr = 0, nei_agg = 0):
         super(KPGraphConvolution, self).__init__()
         print("deformable:", deformable)
         print("nonlin:", nonlin)
-        self.net = KernelPointAggregation(kernel_size, in_features, out_features, KP_extent, radius, manifold, use_bias, dropout, nonlin=nonlin, deformable=deformable)
+        print("corr:", corr)
+        print("nei_agg:", nei_agg)
+        self.net = KernelPointAggregation(kernel_size, in_features, out_features, KP_extent, radius, manifold, use_bias, dropout, nonlin=nonlin, deformable=deformable, corr = corr, nei_agg = nei_agg)
 
     def forward(self, input):
         x, nei, nei_mask = input
