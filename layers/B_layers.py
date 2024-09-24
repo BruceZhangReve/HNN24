@@ -238,7 +238,7 @@ class KernelPointAggregation(nn.Module):
         self.corr = corr
         self.nei_agg = nei_agg
 
-        self.additional_devices = True #Please change settings here, this is not a part of config!!!
+        self.additional_devices = False #Please change settings here, this is not a part of config!!!
         if self.additional_devices:
             self.c_additional6 = self.c.to(torch.device('cuda:6')) # for MLP(linear1)
             self.c_additional5 = self.c.to(torch.device('cuda:5')) # for MLP(linear2)
